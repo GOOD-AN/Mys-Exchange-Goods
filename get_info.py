@@ -6,13 +6,12 @@ import os
 import platform
 import configparser
 import time
+import pyperclip
 import requests
 
 MAIN_VERSION = '0.0.1'
 MI_URL = 'https://api-takumi.mihoyo.com'
 WEB_URL = 'https://webapi.account.mihoyo.com'
-
-MI_COOKIE = ""
 
 
 def load_config():
@@ -27,22 +26,38 @@ def load_config():
         print(err)
 
 
+def write_config_file(section, key, value):
+    '''
+    写入配置文件
+    '''
+    try:
+        ini_config.set(section, key, value)
+        with open("config.ini", "w", encoding="utf-8") as config_file:
+            ini_config.write(config_file)
+            print("写入成功")
+    except Exception as err:
+        print(err)
+
+
 def get_address() -> None:
     '''
     获取收货地址(需登录验证)
     '''
+    mi_cookie = ini_config.get('user_info', 'cookie').strip(" ")
+    if mi_cookie == "":
+        print("请先获取Cookie")
     address_url = MI_URL + '/account/address/list'
     address_headers = {
-        "Cookie": MI_COOKIE,
+        "Cookie": mi_cookie,
     }
     try:
         address_list_req = requests.get(address_url, headers=address_headers)
         address_list = address_list_req.json()["data"]["list"]
+        address_id_list = []
         address_id = 1
-        address_id_list = {}
         for address_data in address_list:
+            print("------------")
             print(f"第{address_id}个地址")
-            print(f"地址ID: {address_data['id']}")
             print(f"省: {address_data['province_name']}")
             print(f"市: {address_data['city_name']}")
             print(f"区/县: {address_data['county_name']}")
@@ -50,15 +65,36 @@ def get_address() -> None:
             print(f"联系电话: {address_data['connect_areacode']+address_data['connect_mobile']}")
             print(f"联系人: {address_data['connect_name']}")
             address_id += 1
-        return None
-    except Exception as e:
-        print(e)
+            address_id_list.append(address_data['id'])
+        address_id_in = input("请输入需要写入的地址序号(暂只支持一个): ")
+        if address_id_in == "":
+            print("未选择地址序号")
+        else:
+            if address_id_in.isdigit() and 0 < int(address_id_in) < address_id:
+                if ini_config.get('user_info', 'address_id'):
+                    while True:
+                        address_id_in = input("已存在地址序号, 是否覆盖?(y/n): ")
+                        if address_id_in == "y":
+                            write_config_file('user_info', 'address_id',
+                                              address_id_list[int(address_id_in - 1)])
+                        elif address_id_in == "n":
+                            break
+                        else:
+                            print("输入错误")
+                            continue
+                        break
+                else:
+                    write_config_file("user_info", "address_id",
+                                      address_id_list[int(address_id_in - 1)])
+        return True
+    except Exception as err:
+        print(err)
         return False
 
 
 def get_gift_time(goods_id):
     '''
-    获取礼物兑换时间
+    获取礼物真实兑换时间
     '''
     gift_detail_url = MI_URL + "/mall/v1/web/goods/detail"
     gift_detail_params = {
@@ -68,17 +104,16 @@ def get_gift_time(goods_id):
     }
     try:
         gift_detail_req = requests.get(gift_detail_url, params=gift_detail_params)
-        if (gift_detail_req.status_code != 200):
+        if gift_detail_req.status_code != 200:
             return False
         gift_detail = gift_detail_req.json()["data"]
         if gift_detail is None:
             return False
-        # print(f"商品类型：{gift_detail['type']}")
         if gift_detail['status'] == 'online':
             return int(gift_detail['next_time'])
-        else:
-            return int(gift_detail['sale_start_time'])
-    except:
+        return int(gift_detail['sale_start_time'])
+    except Exception as err:
+        print(err)
         return False
 
 
@@ -87,7 +122,7 @@ def get_gift_list():
     获取礼物列表
     '''
     try:
-        while (True):
+        while True:
             os.system(CLEAR_TYPE)
             print("""\
 1.全部商品
@@ -127,9 +162,9 @@ def get_gift_list():
             }
             gift_id_list = []
             gift_num = 1
-            while (True):
+            while True:
                 gift_list_req = requests.get(gift_list_url, params=gift_list_params)
-                if (gift_list_req.status_code != 200):
+                if gift_list_req.status_code != 200:
                     return False
                 gift_list = gift_list_req.json()["data"]
                 for gift_data in gift_list["list"]:
@@ -139,7 +174,7 @@ def get_gift_list():
                     if not gift_data['unlimit'] and gift_data['next_num'] == 0 and gift_data[
                             'total'] == 0:
                         continue
-                    print("----------")
+                    print("------------")
                     print(f"商品序号: {gift_num}")
                     print(f"商品名称: {gift_data['goods_name']}")
                     print(f"商品价格: {gift_data['price']} 米游币")
@@ -150,9 +185,8 @@ def get_gift_list():
                     if gift_data['next_time'] == 0:
                         print("商品兑换时间: 任何时段")
                     else:
-                        print(
-                            f"商品兑换时间: {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(get_gift_time(gift_data['goods_id'])))}"
-                        )
+                        gift_time = time.localtime(get_gift_time(gift_data['goods_id']))
+                        print(f"商品兑换时间: {time.strftime('%Y-%m-%d %H:%M:%S',gift_time)}")
                     # month 为每月限购
                     if gift_data["account_cycle_type"] == "forever":
                         print(f"每人限购: {gift_data['account_cycle_limit']} 个")
@@ -160,7 +194,7 @@ def get_gift_list():
                         print(f"本月限购: {gift_data['account_cycle_limit']} 个")
                     gift_num += 1
                     gift_id_list.append(gift_data['goods_id'])
-                if (gift_list['total'] > gift_list_params['page'] * gift_list_params['page_size']):
+                if gift_list['total'] > gift_list_params['page'] * gift_list_params['page_size']:
                     gift_list_params['page'] += 1
                 else:
                     break
@@ -168,33 +202,33 @@ def get_gift_list():
             if '' not in gift_id_in:
                 gift_id_write = ''
                 for gift_id in gift_id_in:
-                    gift_id_write += gift_id_list[int(gift_id) - 1] + ','
+                    if gift_id.isdigit() and 0 < int(gift_id) < gift_num:
+                        gift_id_write += gift_id_list[int(gift_id) - 1] + ','
                 if ini_config.get('exchange_info', 'good_id'):
-                    while (True):
-                        print("已存在商品id，需要的操作是\n1.追加\n2.替换\n3.删除\n4.取消")
+                    while True:
+                        print("检测到已存在商品id，需要的操作是\n1.追加\n2.替换\n3.删除\n4.取消")
                         choice = input("请输入选项: ")
                         if choice == '1':
                             gift_id_write += ini_config.get('exchange_info', 'good_id')
                             gift_id_write_set = set(gift_id_write.split(','))
                             gift_id_write = ','.join(gift_id_write_set)
-                            ini_config.set('exchange_info', 'good_id', gift_id_write)
-                            break
+                            write_config_file('exchange_info', 'good_id', gift_id_write)
                         elif choice == '2':
                             gift_id_write = gift_id_write.rstrip(',')
-                            ini_config.set('exchange_info', 'good_id', gift_id_write)
-                            break
+                            write_config_file('exchange_info', 'good_id', gift_id_write)
                         elif choice == '3':
-                            ini_config.set('exchange_info', 'good_id', '')
-                            break
+                            write_config_file('exchange_info', 'good_id', '')
                         elif choice == '4':
                             break
                         else:
                             input("输入有误，请重新输入(回车以返回)")
+                            continue
+                        break
                 else:
                     gift_id_write = gift_id_write.rstrip(',')
-                    ini_config.set('exchange_info', 'good_id', gift_id_write)
-                with open("config.ini", "w", encoding="utf-8") as config_file:
-                    ini_config.write(config_file)
+                    write_config_file('exchange_info', 'good_id', gift_id_write)
+            else:
+                print("未选择任何商品")
             input("按回车键继续")
     except Exception as err:
         print(err)
@@ -206,12 +240,15 @@ def get_app_cookie():
     '''
     https://user.mihoyo.com/#/login/captcha
     获取app端cookie
-    参考: 
+    参考:
     https://bbs.tampermonkey.net.cn/thread-1040-1-1.html
     https://github.com/Womsxd/AutoMihoyoBBS/blob/master/login.py
     '''
     try:
-        print("请在浏览器打开https://user.mihoyo.com/#/login/captcha, 输入手机号后获取验证码，但不要登录，然后在下方按提示输入数据。")
+        login_url = 'https://user.mihoyo.com/#/login/captcha'
+        print(f"请在浏览器打开{login_url}, 输入手机号后获取验证码，但不要登录，然后在下方按提示输入数据。")
+        pyperclip.copy(login_url)
+        print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         mobile = input("请输入手机号: ")
         mobile_captcha = input("请输入验证码: ")
         login_user_url_one = WEB_URL + "/Api/login_by_mobilecaptcha"
@@ -245,14 +282,16 @@ def get_app_cookie():
         }
         user_stoken_req = requests.get(user_stoken_url, params=user_stoken_params)
         user_stoken_data = None
-        if (user_stoken_req.status_code == 200):
+        if user_stoken_req.status_code == 200:
             user_stoken_data = user_stoken_req.json()["data"]["list"][0]["token"]
         if user_stoken_data is None:
             print("stoken获取失败，请重新获取")
             return False
 
         # 获取第二个 cookie
-        print("重新在此页面获取验证码，依旧不要登录，在下方输入数据。")
+        print("重新在此页面(刷新或重新打开)获取验证码，依旧不要登录，在下方输入数据。")
+        pyperclip.copy(login_url)
+        print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         mobile_captcha = input("请输入第二次验证码: ")
         login_user_url_two = MI_URL + "/account/auth/api/webLoginByMobile"
         login_user_form_data_two = {
@@ -275,8 +314,25 @@ def get_app_cookie():
         uer_cookie += "login_ticket=" + login_user_cookie_one['login_ticket'] + ";"
         uer_cookie += "stoken=" + user_stoken_data + ";"
 
-        print(uer_cookie)
         # 写入文件
+        if ini_config.get('user_info', 'cookie'):
+            while True:
+                print("检测到已有cookie, 是否覆盖? (y/n)")
+                is_overwrite = input("请输入: ")
+                if is_overwrite == "y":
+                    write_config_file('user_info', 'cookie', uer_cookie)
+                elif is_overwrite == "n":
+                    break
+                else:
+                    print("输入错误, 请重新输入")
+                    continue
+                break
+        else:
+            ini_config.set('user_info', 'cookie', uer_cookie)
+            with open("config.ini", "w", encoding="utf-8") as config_file:
+                ini_config.write(config_file)
+            print("写入成功")
+        return True
     except Exception as err:
         print(err)
         return False
@@ -295,9 +351,8 @@ def start():
     开始任务
     '''
     try:
-        while (True):
+        while True:
             os.system(CLEAR_TYPE)
-            print("本项目查询商品ID可用")
             print("""选择功能:
 1. 获取Cookie
 2. 查询收货地址
