@@ -77,12 +77,10 @@ def get_address() -> None:
                         if address_id_in == "y":
                             write_config_file('user_info', 'address_id',
                                               address_id_list[int(address_id_in - 1)])
-                        elif address_id_in == "n":
                             break
-                        else:
-                            print("输入错误")
-                            continue
-                        break
+                        if address_id_in == "n":
+                            break
+                        print("输入错误")
                 else:
                     write_config_file("user_info", "address_id",
                                       address_id_list[int(address_id_in - 1)])
@@ -321,29 +319,73 @@ def get_app_cookie():
                 is_overwrite = input("请输入: ")
                 if is_overwrite == "y":
                     write_config_file('user_info', 'cookie', uer_cookie)
-                elif is_overwrite == "n":
                     break
-                else:
-                    print("输入错误, 请重新输入")
-                    continue
-                break
+                if is_overwrite == "n":
+                    break
+                print("输入错误, 请重新输入")
+                continue
         else:
-            ini_config.set('user_info', 'cookie', uer_cookie)
-            with open("config.ini", "w", encoding="utf-8") as config_file:
-                ini_config.write(config_file)
-            print("写入成功")
+            write_config_file('user_info', 'cookie', uer_cookie)
         return True
     except Exception as err:
         print(err)
         return False
 
 
+def compare_version(old_version, new_version):
+    '''
+    版本号比较
+    '''
+    try:
+        for o_v, n_v in zip(old_version, new_version):
+            if o_v > n_v:
+                return 1
+            if o_v < n_v:
+                return -1
+        return 0
+    except Exception as err:
+        print(err)
+        sys.exit()
+
+
 def check_update():
     '''
     检查更新
     '''
-    input("按回车键继续")
-    return None
+    config_version = ini_config.get('app', 'version')
+    try:
+        if MAIN_VERSION == config_version:
+            print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}")
+            # 远程检查更新
+            # check_url = ""
+            # check_info = requests.get(check_url).json()
+            # remote_least_version = check_info['least_version'].split('.')
+            # local_version = MAIN_VERSION.split('.')
+            # if compare_version(remote_least_version, local_version) == 1:
+            #     print("版本过低, 程序将停止运行")
+            #     time.sleep(3000)
+            #     sys.exit()
+            # remote_last_vesion = check_info['last_vesion'].split('.')
+            # if compare_version(local_version, remote_last_vesion) == -1:
+            #     remote_update_log_list = check_info['update_log']
+            #     print(f"当前程序版本为v{MAIN_VERSION}, 最新程序版本为v{remote_last_vesion}")
+            #     print("当前非最新版本，建议更新")
+            #     print("更新概览: ")
+            #     for update_log in remote_update_log_list:
+            #         if compare_version(update_log['version'], remote_update_log_list) == 1:
+            #             print(f"版本: {update_log['version']}")
+            #             print(f"更新说明: {update_log['msg']}")
+            #         else:
+            #             print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
+            #             break
+        else:
+            print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
+            print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
+        input("按回车键继续")
+        return None
+    except Exception as err:
+        print(err)
+        return None
 
 
 def start():
