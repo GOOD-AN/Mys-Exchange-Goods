@@ -3,27 +3,14 @@
 '''
 import sys
 import os
-import platform
-import configparser
 import time
 import pyperclip
 import requests
 
-MAIN_VERSION = '0.0.1'
+from com_tool import load_config, check_update, check_plat
+
 MI_URL = 'https://api-takumi.mihoyo.com'
 WEB_URL = 'https://webapi.account.mihoyo.com'
-
-
-def load_config():
-    '''
-    加载配置文件
-    '''
-    config = configparser.ConfigParser()
-    try:
-        config.read_file(open("config.ini", "r", encoding="utf-8"))
-        return config
-    except FileNotFoundError as err:
-        print(err)
 
 
 def write_config_file(section, key, value):
@@ -35,22 +22,28 @@ def write_config_file(section, key, value):
         with open("config.ini", "w", encoding="utf-8") as config_file:
             ini_config.write(config_file)
             print("写入成功")
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
-        print(err)
+        print(err, err.__traceback__.tb_lineno)
+        input("按回车键继续")
 
 
 def get_address() -> None:
     '''
     获取收货地址(需登录验证)
     '''
-    mi_cookie = ini_config.get('user_info', 'cookie').strip(" ")
-    if mi_cookie == "":
-        print("请先获取Cookie")
-    address_url = MI_URL + '/account/address/list'
-    address_headers = {
-        "Cookie": mi_cookie,
-    }
     try:
+        mi_cookie = ini_config.get('user_info', 'cookie').strip(" ")
+        if mi_cookie == "":
+            print("请先获取Cookie")
+            input("按回车键继续")
+            return False
+        address_url = MI_URL + '/account/address/list'
+        address_headers = {
+            "Cookie": mi_cookie,
+        }
         address_list_req = requests.get(address_url, headers=address_headers)
         address_list = address_list_req.json()["data"]["list"]
         address_id_list = []
@@ -73,20 +66,27 @@ def get_address() -> None:
             if address_id_in.isdigit() and 0 < int(address_id_in) < address_id:
                 if ini_config.get('user_info', 'address_id'):
                     while True:
-                        address_id_in = input("已存在地址序号, 是否覆盖?(y/n): ")
-                        if address_id_in == "y":
+                        is_cover = input("已存在地址序号, 是否覆盖?(y/n): ")
+                        if is_cover == "y":
                             write_config_file('user_info', 'address_id',
                                               address_id_list[int(address_id_in - 1)])
                             break
-                        if address_id_in == "n":
+                        if is_cover == "n":
                             break
                         print("输入错误")
                 else:
                     write_config_file("user_info", "address_id",
-                                      address_id_list[int(address_id_in - 1)])
+                                      address_id_list[int(address_id_in) - 1])
+        print("地址写入成功")
+        input("按回车键继续")
         return True
+    except KeyboardInterrupt:
+        print("强制退出")
+        input("按回车键继续")
+        sys.exit()
     except Exception as err:
-        print(err)
+        print(err, err.__traceback__.tb_lineno)
+        input("按回车键继续")
         return False
 
 
@@ -94,13 +94,13 @@ def get_gift_time(goods_id):
     '''
     获取礼物真实兑换时间
     '''
-    gift_detail_url = MI_URL + "/mall/v1/web/goods/detail"
-    gift_detail_params = {
-        "app_id": 1,
-        "point_sn": "myb",
-        "goods_id": goods_id,
-    }
     try:
+        gift_detail_url = MI_URL + "/mall/v1/web/goods/detail"
+        gift_detail_params = {
+            "app_id": 1,
+            "point_sn": "myb",
+            "goods_id": goods_id,
+        }
         gift_detail_req = requests.get(gift_detail_url, params=gift_detail_params)
         if gift_detail_req.status_code != 200:
             return False
@@ -110,8 +110,12 @@ def get_gift_time(goods_id):
         if gift_detail['status'] == 'online':
             return int(gift_detail['next_time'])
         return int(gift_detail['sale_start_time'])
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
-        print(err)
+        print(err, err.__traceback__.tb_lineno)
+        input("按回车键继续")
         return False
 
 
@@ -228,8 +232,11 @@ def get_gift_list():
             else:
                 print("未选择任何商品")
             input("按回车键继续")
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
-        print(err)
+        print(err, err.__traceback__.tb_lineno)
         input("按回车键继续")
         return False
 
@@ -258,7 +265,6 @@ def get_app_cookie():
         # 获取第一个 cookie
         login_user_req_one = requests.post(login_user_url_one, login_user_form_data_one)
         login_user_cookie_one = requests.utils.dict_from_cookiejar(login_user_req_one.cookies)
-        print(type(login_user_cookie_one))
         if "login_ticket" not in login_user_cookie_one:
             print("缺少'login_ticket'字段，请重新获取")
             return False
@@ -301,14 +307,12 @@ def get_app_cookie():
         }
         login_user_req_two = requests.post(login_user_url_two, json=login_user_form_data_two)
         login_user_cookie_two = requests.utils.dict_from_cookiejar(login_user_req_two.cookies)
-        print(login_user_req_two.json())
-        print(login_user_cookie_two)
         if "cookie_token" not in login_user_cookie_two:
             print("缺少'cookie_token'字段，请重新获取")
             return False
         uer_cookie = ""
         for key in login_user_cookie_two:
-            uer_cookie += key + "=" + login_user_cookie_two['key'] + ";"
+            uer_cookie += key + "=" + login_user_cookie_two[key] + ";"
         uer_cookie += "login_ticket=" + login_user_cookie_one['login_ticket'] + ";"
         uer_cookie += "stoken=" + user_stoken_data + ";"
 
@@ -326,66 +330,16 @@ def get_app_cookie():
                 continue
         else:
             write_config_file('user_info', 'cookie', uer_cookie)
-        return True
-    except Exception as err:
-        print(err)
-        return False
-
-
-def compare_version(old_version, new_version):
-    '''
-    版本号比较
-    '''
-    try:
-        for o_v, n_v in zip(old_version, new_version):
-            if o_v > n_v:
-                return 1
-            if o_v < n_v:
-                return -1
-        return 0
-    except Exception as err:
-        print(err)
-        sys.exit()
-
-
-def check_update():
-    '''
-    检查更新
-    '''
-    config_version = ini_config.get('app', 'version')
-    try:
-        if MAIN_VERSION == config_version:
-            print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}")
-            # 远程检查更新
-            # check_url = ""
-            # check_info = requests.get(check_url).json()
-            # remote_least_version = check_info['least_version'].split('.')
-            # local_version = MAIN_VERSION.split('.')
-            # if compare_version(remote_least_version, local_version) == 1:
-            #     print("版本过低, 程序将停止运行")
-            #     time.sleep(3000)
-            #     sys.exit()
-            # remote_last_vesion = check_info['last_vesion'].split('.')
-            # if compare_version(local_version, remote_last_vesion) == -1:
-            #     remote_update_log_list = check_info['update_log']
-            #     print(f"当前程序版本为v{MAIN_VERSION}, 最新程序版本为v{remote_last_vesion}")
-            #     print("当前非最新版本，建议更新")
-            #     print("更新概览: ")
-            #     for update_log in remote_update_log_list:
-            #         if compare_version(update_log['version'], remote_update_log_list) == 1:
-            #             print(f"版本: {update_log['version']}")
-            #             print(f"更新说明: {update_log['msg']}")
-            #         else:
-            #             print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
-            #             break
-        else:
-            print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
-            print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
+        print("cookie 写入成功")
         input("按回车键继续")
-        return None
+        return True
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
-        print(err)
-        return None
+        print(err, err.__traceback__.tb_lineno)
+        input("按回车键继续")
+        return False
 
 
 def start():
@@ -410,22 +364,30 @@ def start():
             elif select_function == "3":
                 get_gift_list()
             elif select_function == "4":
-                check_update()
+                check_update(ini_config)
             elif select_function == "0":
                 sys.exit()
             else:
                 input("输入有误，请重新输入(回车以返回)")
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
-        print(err)
+        print(err, err.__traceback__.tb_lineno)
+        input("按回车键继续")
         sys.exit()
 
 
 if __name__ == '__main__':
-    CLEAR_TYPE = ""
-    if platform.system() == "Windows":
-        CLEAR_TYPE = "cls"
-    else:
-        CLEAR_TYPE = "clear"
-    ini_config = load_config()
-    check_update()
-    start()
+    try:
+        CLEAR_TYPE = check_plat()
+        ini_config = load_config()
+        check_update(ini_config)
+        start()
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
+    except Exception as main_err:
+        print(main_err, main_err.__traceback__.tb_lineno)
+        input("按回车键继续")
+        sys.exit()
