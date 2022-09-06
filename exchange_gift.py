@@ -20,20 +20,23 @@ def get_gift_biz(goods_id: int):
     '''
     获取商品所属分区与类型
     '''
-    gift_detail_url = MI_URL + "/mall/v1/web/goods/detail"
-    gift_detail_params = {
-        "app_id": 1,
-        "point_sn": "myb",
-        "goods_id": goods_id,
-    }
     try:
+        gift_detail_url = MI_URL + "/mall/v1/web/goods/detail"
+        gift_detail_params = {
+            "app_id": 1,
+            "point_sn": "myb",
+            "goods_id": goods_id,
+        }
         gift_detail_req = requests.get(gift_detail_url, params=gift_detail_params)
         if gift_detail_req.status_code != 200:
             return False
         gift_detail = gift_detail_req.json()["data"]
         if gift_detail is None:
             return False
-        return gift_detail['game_biz'], gift_detail['type']
+        return gift_detail['game_biz']
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
         print(err, err.__traceback__.tb_lineno)
         return False
@@ -62,6 +65,9 @@ def get_cookie_str(target):
     try:
         location = mi_cookie.find(target)
         return mi_cookie[mi_cookie.find("=", location) + 1:mi_cookie.find(";", location)]
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
         print(err, err.__traceback__.tb_lineno)
         return None
@@ -87,7 +93,13 @@ def get_action_ticket():
         if action_ticket_req.status_code != 200:
             print("ticket请求失败，请检查cookie")
             return False
+        if action_ticket_req.json()['data'] is None:
+            print(f"ticket获取失败, 原因为{action_ticket_req.json()['message']}")
+            return False
         return action_ticket_req.json()['data']['ticket']
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
         print(err, err.__traceback__.tb_lineno)
         return False
@@ -119,6 +131,9 @@ def get_game_roles(action_ticket, game_biz, uid):
             if game_roles['game_biz'] == game_biz and game_roles['game_uid'] == str(uid):
                 return True
         return False
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
         print(err, err.__traceback__.tb_lineno)
         return False
@@ -143,9 +158,13 @@ def post_exchange_gift(gift_id, biz):
         exchange_gift_headers = {
             "Cookie": mi_cookie,
         }
-        exchange_gift_req = requests.post(exchange_gift_url,
-                                          headers=exchange_gift_headers,
-                                          json=exchange_gift_json)
+        for _ in range(int(ini_config.get('exchange_info', 'retry'))):
+            exchange_gift_req = requests.post(exchange_gift_url,
+                                              headers=exchange_gift_headers,
+                                              json=exchange_gift_json)
+            if exchange_gift_req.status_code != 429:
+                break
+            time.sleep(1)
         if exchange_gift_req.status_code != 200:
             print("兑换请求失败")
             return False
@@ -155,6 +174,9 @@ def post_exchange_gift(gift_id, biz):
             return False
         print(f"商品{str(gift_id)}兑换成功, 订单号{exchange_gift_req_json['data']['order_sn']}")
         print("请手动前往米游社APP查看订单状态")
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
         print(err, err.__traceback__.tb_lineno)
         return False
@@ -164,24 +186,32 @@ def init_task():
     '''
     初始化任务
     '''
-    gift_list = ini_config.get('exchange_info', 'good_id').split(',')
-    task_thread = int(ini_config.get('exchange_info', 'thread'))
-    task_list = []
-    for good_id in gift_list:
-        game_biz, game_type = get_gift_biz(good_id)
-        if not game_biz:
-            print("获取game_biz失败")
-            continue
-        action_ticket = get_action_ticket()
-        if not action_ticket:
-            print("获取ticket失败")
-            continue
-        if not get_game_roles(action_ticket, game_biz, ini_config.get('user_info', 'uid')):
-            print("没有绑定角色")
-            continue
-        for _ in range(task_thread):
-            task_list.append(threading.Thread(target=post_exchange_gift, args=(good_id, game_biz)))
-    return task_list
+    try:
+        gift_list = ini_config.get('exchange_info', 'good_id').split(',')
+        task_thread = int(ini_config.get('exchange_info', 'thread'))
+        task_list = []
+        for good_id in gift_list:
+            game_biz = get_gift_biz(good_id)
+            if not game_biz:
+                print("获取game_biz失败")
+                continue
+            action_ticket = get_action_ticket()
+            if not action_ticket:
+                print("获取ticket失败")
+                continue
+            if not get_game_roles(action_ticket, game_biz, ini_config.get('user_info', 'uid')):
+                print("查询绑定角色失败")
+                continue
+            for _ in range(task_thread):
+                task_list.append(
+                    threading.Thread(target=post_exchange_gift, args=(good_id, game_biz)))
+        return task_list
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
+    except Exception as err:
+        print(err, err.__traceback__.tb_lineno)
+        return False
 
 
 def start():
@@ -198,10 +228,11 @@ def start():
             sys.exit()
         start_timestamp = ini_config.get('exchange_info', 'time')
         start_time = time.mktime(time.strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
+        ntp_enable = ini_config.get('ntp', 'enable')
         ntp_server = ini_config.get('ntp', 'ntp_server')
         temp_time = 0
         while True:
-            now_time = int(get_time(ntp_server))
+            now_time = int(get_time(ntp_server, ntp_enable))
             if now_time >= start_time:
                 os.system(CLEAR_TYPE)
                 print("开始执行兑换任务")
@@ -218,9 +249,12 @@ def start():
                 print(
                     f"距离兑换开始还有{int(time_t / 3600)}小时{int(time_t % 3600 / 60)}分钟{int(time_t % 60)}秒")
                 temp_time = now_time
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
     except Exception as err:
         print(err, err.__traceback__.tb_lineno)
-        sys.exit()
+        return False
 
 
 if __name__ == '__main__':

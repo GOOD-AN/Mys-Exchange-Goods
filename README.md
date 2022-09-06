@@ -9,23 +9,37 @@
 
 ### 配置`config.ini`文件
 
+[user_info]
+
 | 参数       | 说明                                                         |
 | ---------- | ------------------------------------------------------------ |
 | cookie     | 用户`cookie`数据, 使用`get_info.py`获取                      |
 | uid        | 用户游戏内UID, 暂需手动填写, 填写为需要兑换的游戏商品对应的UID, 暂只支持一个 |
 | address_id | 用户收货地址ID, 使用`get_info.py`获取                        |
-| good_id    | 需要兑换的商品ID, 使用`get_info.py`获取                      |
-| time       | 兑换商品的开始时间, 需手动填写                               |
-| thread     | 每个商品同时请求兑换的线程数                                 |
-| ntp_server | ntp对时服务器                                                |
 
-** [\*] 其余参数暂未使用, 可忽略**
+[exchange_info]
+
+| 参数    | 说明                                    |
+| ------- | --------------------------------------- |
+| good_id | 需要兑换的商品ID, 使用`get_info.py`获取 |
+| time    | 兑换商品的开始时间, 需手动填写          |
+| thread  | 每个商品同时请求兑换的线程数            |
+| retry   | 请求时重试次数                          |
+
+[ntp]
+
+| 参数       | 说明          |
+| ---------- | ------------- |
+| enable     | 是否启用ntp   |
+| ntp_server | ntp对时服务器 |
+
+**[\*] 其余参数暂未使用, 可忽略**
 
 #### 示例
 
 ```ini
 [user_info]
-cookie = account_id=123456879;cookie_token=123456789qwert;ltuid=123456879;aliyungf_tc=123456789qwe;login_ticket=123456789qwert;
+cookie = account_id=123456879;cookie_token=123456789qwert;ltuid=123456879;aliyungf_tc=123456789qwe;login_ticket=123456789qwert;stoken=123456789qwe;
 uid = 123789456
 address_id = 1234
 

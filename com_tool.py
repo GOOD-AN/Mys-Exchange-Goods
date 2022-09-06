@@ -103,11 +103,13 @@ def check_update(ini_config):
         return None
 
 
-def get_time(ntp_server):
+def get_time(ntp_server, ntp_enable):
     '''
     获取当前时间
     '''
     try:
+        if not ntp_enable:
+            return time.time()
         return ntplib.NTPClient().request(ntp_server).tx_time
     except KeyboardInterrupt:
         print("强制退出")
