@@ -2,6 +2,7 @@
 通用函数
 '''
 import hashlib
+import os
 import platform
 import random
 import string
@@ -9,6 +10,7 @@ import sys
 import time
 import configparser
 import ntplib
+import requests
 
 MAIN_VERSION = '0.0.1'
 
@@ -35,7 +37,9 @@ def load_config():
     '''
     config = configparser.ConfigParser()
     try:
-        config.read_file(open("config.ini", "r", encoding="utf-8"))
+        path = os.path.abspath(__file__)
+        path = os.path.dirname(path) + '/config.ini'
+        config.read_file(open(path, "r", encoding="utf-8"))
         return config
     except KeyboardInterrupt:
         print("强制退出")
@@ -72,27 +76,28 @@ def check_update(ini_config):
         if MAIN_VERSION == config_version:
             print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}")
             # 远程检查更新
-            # check_url = ""
-            # check_info = requests.get(check_url).json()
-            # remote_least_version = check_info['least_version'].split('.')
-            # local_version = MAIN_VERSION.split('.')
-            # if compare_version(remote_least_version, local_version) == 1:
-            #     print("版本过低, 程序将停止运行")
-            #     time.sleep(3000)
-            #     sys.exit()
-            # remote_last_vesion = check_info['last_vesion'].split('.')
-            # if compare_version(local_version, remote_last_vesion) == -1:
-            #     remote_update_log_list = check_info['update_log']
-            #     print(f"当前程序版本为v{MAIN_VERSION}, 最新程序版本为v{remote_last_vesion}")
-            #     print("当前非最新版本，建议更新")
-            #     print("更新概览: ")
-            #     for update_log in remote_update_log_list:
-            #         if compare_version(update_log['version'], remote_update_log_list) == 1:
-            #             print(f"版本: {update_log['version']}")
-            #             print(f"更新说明: {update_log['msg']}")
-            #         else:
-            #             print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
-            #             break
+            check_url = "https://github.com/GOOD-AN/mys_exch_goods/raw/main/update_log.json"
+            check_info = requests.get(check_url).json()
+            remote_least_version = check_info['least_version'].split('.')
+            local_version = MAIN_VERSION.split('.')
+            if compare_version(remote_least_version, local_version) == 1:
+                print("版本过低, 程序将停止运行")
+                time.sleep(3000)
+                sys.exit()
+            remote_last_vesion = check_info['last_vesion'].split('.')
+            if compare_version(local_version, remote_last_vesion) == -1:
+                remote_update_log_list = check_info['update_log']
+                print(f"当前程序版本为v{MAIN_VERSION}, 最新程序版本为v{remote_last_vesion}")
+                print("当前非最新版本，建议更新")
+                print("更新概览: ")
+                for update_log in remote_update_log_list:
+                    if compare_version(update_log['version'], remote_update_log_list) == 1:
+                        print(f"版本: {update_log['version']}")
+                        print(f"更新时间: {update_log['update_time']}")
+                        print(f"更新说明: {update_log['update_content']}")
+                    else:
+                        print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
+                        break
         else:
             print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
             print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")

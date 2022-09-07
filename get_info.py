@@ -19,7 +19,9 @@ def write_config_file(section, key, value):
     '''
     try:
         ini_config.set(section, key, value)
-        with open("config.ini", "w", encoding="utf-8") as config_file:
+        path = os.path.abspath(__file__)
+        path = os.path.dirname(path) + '/config.ini'
+        with open(path, "w", encoding="utf-8") as config_file:
             ini_config.write(config_file)
             print("写入成功")
     except KeyboardInterrupt:
