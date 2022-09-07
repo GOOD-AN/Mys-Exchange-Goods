@@ -69,7 +69,7 @@ def get_address() -> None:
                         is_cover = input("已存在地址序号, 是否覆盖?(y/n): ")
                         if is_cover == "y":
                             write_config_file('user_info', 'address_id',
-                                              address_id_list[int(address_id_in - 1)])
+                                              address_id_list[int(address_id_in) - 1])
                             break
                         if is_cover == "n":
                             break
