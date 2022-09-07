@@ -1,7 +1,10 @@
 '''
 通用函数
 '''
+import hashlib
 import platform
+import random
+import string
 import sys
 import time
 import configparser
@@ -103,7 +106,7 @@ def check_update(ini_config):
         return None
 
 
-def get_time(ntp_server, ntp_enable):
+def get_time(ntp_enable, ntp_server):
     '''
     获取当前时间
     '''
@@ -117,3 +120,32 @@ def get_time(ntp_server, ntp_enable):
     except Exception as err:
         print(f"网络时间获取失败, 原因为{err}, 转为本地时间")
         return time.time()
+
+
+# class CheckNetwork:
+#     a = 123
+
+#     def __init__(self) -> None:
+#         print(CheckNetwork)
+#         print(CheckNetwork.a)
+#         CheckNetwork.a = time.time()
+#         print(CheckNetwork.a)
+
+#     def __del__(self):
+#         print('del')
+
+
+def get_ds():
+    '''
+    生成请求 Header 里的 DS
+    参考：
+    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/tools.py
+    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/setting.py
+    '''
+    android_salt = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v"
+    t_param = str(int(time.time()))
+    r_param = ''.join(random.sample(string.ascii_lowercase + string.digits, 6))
+    md5 = hashlib.md5()
+    md5.update(f'salt={android_salt}&t={t_param}&r={r_param}'.encode())
+    c_param = md5.hexdigest()
+    return f"{t_param},{r_param},{c_param}"

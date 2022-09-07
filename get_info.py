@@ -311,8 +311,8 @@ def get_app_cookie():
             print("缺少'cookie_token'字段，请重新获取")
             return False
         uer_cookie = ""
-        for key in login_user_cookie_two:
-            uer_cookie += key + "=" + login_user_cookie_two[key] + ";"
+        for key, value in login_user_cookie_two.items():
+            uer_cookie += key + "=" + value + ";"
         uer_cookie += "login_ticket=" + login_user_cookie_one['login_ticket'] + ";"
         uer_cookie += "stoken=" + user_stoken_data + ";"
 

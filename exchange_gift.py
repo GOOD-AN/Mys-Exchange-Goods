@@ -1,19 +1,17 @@
 '''
 米游社商品兑换
 '''
-import hashlib
 import os
-import random
-import string
 import sys
 import threading
 import time
 import requests
+from ping3 import ping
 
 from com_tool import check_plat, check_update, get_time, load_config
 
 MI_URL = 'https://api-takumi.mihoyo.com'
-WEB_URL = 'https://webapi.account.mihoyo.com'
+CHECK_URL = 'api-takumi.mihoyo.com'
 
 
 def get_gift_biz(goods_id: int):
@@ -40,22 +38,6 @@ def get_gift_biz(goods_id: int):
     except Exception as err:
         print(err, err.__traceback__.tb_lineno)
         return False
-
-
-def get_ds():
-    '''
-    生成请求 Header 里的 DS
-    参考：
-    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/tools.py
-    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/setting.py
-    '''
-    android_salt = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v"
-    t_param = str(int(time.time()))
-    r_param = ''.join(random.sample(string.ascii_lowercase + string.digits, 6))
-    md5 = hashlib.md5()
-    md5.update(f'salt={android_salt}&t={t_param}&r={r_param}'.encode())
-    c_param = md5.hexdigest()
-    return f"{t_param},{r_param},{c_param}"
 
 
 def get_cookie_str(target):
@@ -105,7 +87,7 @@ def get_action_ticket():
         return False
 
 
-def get_game_roles(action_ticket, game_biz, uid):
+def check_game_roles(action_ticket, game_biz, uid):
     '''
     检查是否绑定角色
     '''
@@ -150,15 +132,15 @@ def post_exchange_gift(gift_id, biz):
             "point_sn": "myb",
             "goods_id": str(gift_id),
             "exchange_num": 1,
-            "address_id": int(ini_config.get('user_info', 'address_id')),
-            "uid": int(ini_config.get('user_info', 'uid')),
+            "address_id": ini_config.getint('user_info', 'address_id'),
+            "uid": ini_config.getint('user_info', 'uid'),
             "region": "cn_gf01",
             "game_biz": biz
         }
         exchange_gift_headers = {
             "Cookie": mi_cookie,
         }
-        for _ in range(int(ini_config.get('exchange_info', 'retry'))):
+        for _ in range(ini_config.getint('exchange_info', 'retry')):
             exchange_gift_req = requests.post(exchange_gift_url,
                                               headers=exchange_gift_headers,
                                               json=exchange_gift_json)
@@ -188,7 +170,7 @@ def init_task():
     '''
     try:
         gift_list = ini_config.get('exchange_info', 'good_id').split(',')
-        task_thread = int(ini_config.get('exchange_info', 'thread'))
+        task_thread = ini_config.getint('exchange_info', 'thread')
         task_list = []
         for good_id in gift_list:
             game_biz = get_gift_biz(good_id)
@@ -199,13 +181,75 @@ def init_task():
             if not action_ticket:
                 print("获取ticket失败")
                 continue
-            if not get_game_roles(action_ticket, game_biz, ini_config.get('user_info', 'uid')):
+            if not check_game_roles(action_ticket, game_biz, ini_config.get('user_info', 'uid')):
                 print("查询绑定角色失败")
                 continue
             for _ in range(task_thread):
                 task_list.append(
                     threading.Thread(target=post_exchange_gift, args=(good_id, game_biz)))
         return task_list
+    except KeyboardInterrupt:
+        print("强制退出")
+        sys.exit()
+    except Exception as err:
+        print(err, err.__traceback__.tb_lineno)
+        return False
+
+
+def run_task(task_list):
+    '''
+    运行任务
+    '''
+    try:
+        start_timestamp = ini_config.get('exchange_info', 'time')
+        start_time = time.mktime(time.strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
+        ntp_enable = ini_config.getboolean('ntp', 'enable')
+        ntp_server = ini_config.get('ntp', 'ntp_server')
+        temp_time = 0
+        check_network_enable = ini_config.getboolean('check_network', 'enable')
+        check_network_interval_time = ini_config.getint('check_network', 'interval_time')
+        check_network_stop_time = ini_config.getint('check_network', 'stop_time')
+        network_delay = 0
+        check_last_time = 0
+        truth_start_time = start_time
+        while True:
+            now_time = get_time(ntp_enable, ntp_server)
+            if now_time >= truth_start_time:
+                os.system(CLEAR_TYPE)
+                print("开始执行兑换任务")
+                for task in task_list:
+                    task.start()
+                for task in task_list:
+                    task.join()
+                print("兑换任务执行完毕")
+                sys.exit()
+            elif now_time != temp_time:
+                os.system(CLEAR_TYPE)
+                if not check_network_enable:
+                    print("网络检查未开启")
+                elif truth_start_time - now_time <= check_network_stop_time:
+                    print("网络检查已停止")
+                elif now_time - check_last_time >= check_network_interval_time:
+                    network_delay = ping(CHECK_URL, unit='ms')
+                    if not network_delay or network_delay is None:
+                        print("本次网络检查异常")
+                    else:
+                        check_last_time = now_time
+                if network_delay and network_delay is not None:
+                    print(f"网络延迟为 {round(network_delay, 2)} ms")
+                    if network_delay >= 1000:
+                        print("网络延迟过高, 请检查网络")
+                        delay_time = int(network_delay / 1000)
+                        print(f"程序将任务开始时间提前 {delay_time} 秒")
+                        truth_start_time = start_time - delay_time
+                    else:
+                        truth_start_time = start_time
+                print(f"当前时间 {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))}")
+                time_t = truth_start_time - now_time
+                print(
+                    f"距离兑换开始还有 {int(time_t / 3600)} 小时 {int(time_t % 3600 / 60)} 分钟 {int(time_t % 60)} 秒"
+                )
+                temp_time = now_time
     except KeyboardInterrupt:
         print("强制退出")
         sys.exit()
@@ -226,29 +270,9 @@ def start():
         if not task_list:
             print("没有任务, 程序退出")
             sys.exit()
-        start_timestamp = ini_config.get('exchange_info', 'time')
-        start_time = time.mktime(time.strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
-        ntp_enable = ini_config.get('ntp', 'enable')
-        ntp_server = ini_config.get('ntp', 'ntp_server')
-        temp_time = 0
-        while True:
-            now_time = int(get_time(ntp_server, ntp_enable))
-            if now_time >= start_time:
-                os.system(CLEAR_TYPE)
-                print("开始执行兑换任务")
-                for task in task_list:
-                    task.start()
-                for task in task_list:
-                    task.join()
-                print("兑换任务执行完毕")
-                sys.exit()
-            elif now_time != temp_time:
-                os.system(CLEAR_TYPE)
-                print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))}")
-                time_t = start_time - now_time
-                print(
-                    f"距离兑换开始还有{int(time_t / 3600)}小时{int(time_t % 3600 / 60)}分钟{int(time_t % 60)}秒")
-                temp_time = now_time
+        run_task(task_list)
+        print("程序运行完毕, 即将退出")
+        return True
     except KeyboardInterrupt:
         print("强制退出")
         sys.exit()

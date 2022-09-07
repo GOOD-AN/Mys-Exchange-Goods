@@ -26,6 +26,14 @@
 | thread  | 每个商品同时请求兑换的线程数            |
 | retry   | 请求时重试次数                          |
 
+[check_network]
+
+| 参数          | 说明                                |
+| ------------- | ----------------------------------- |
+| enable        | 是否启用网络检查                    |
+| interval_time | 检查间隔, 单位 秒                   |
+| stop_time     | 距开始兑换多长时间停止检查, 单位 秒 |
+
 [ntp]
 
 | 参数       | 说明          |
@@ -39,7 +47,7 @@
 
 ```ini
 [user_info]
-cookie = account_id=123456879;cookie_token=123456789qwert;ltuid=123456879;aliyungf_tc=123456789qwe;login_ticket=123456789qwert;stoken=123456789qwe;
+cookie = account_id=...;cookie_token=...;ltuid=...;aliyungf_tc=...;login_ticket=...;stoken=...;
 uid = 123789456
 address_id = 1234
 
@@ -47,8 +55,15 @@ address_id = 1234
 good_id = 20220513112546,20220513226423
 time = 2022-01-01 12:00:00
 thread = 3
+retry = 5
+
+[check_network]
+enable = true
+interval_time = 15
+stop_time = 30
 
 [ntp]
+enable = true
 ntp_server = ntp.aliyun.com
 ```
 
