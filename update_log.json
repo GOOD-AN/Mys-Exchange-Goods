@@ -1,9 +1,9 @@
 {
-    "least_version": "0.0.1",
-    "last_vesion": "0.0.1",
+    "least_version": "1.0.0",
+    "last_vesion": "1.0.0",
     "update_log":[
         {
-            "version": "0.0.1",
+            "version": "1.0.0",
             "update_time": "2022-09-07",
             "update_content": "第一版发布"
         }

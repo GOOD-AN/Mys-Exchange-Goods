@@ -12,7 +12,7 @@ import configparser
 import ntplib
 import requests
 
-MAIN_VERSION = '0.0.1'
+MAIN_VERSION = '1.0.0'
 
 
 def check_plat():
