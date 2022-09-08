@@ -76,13 +76,13 @@ def check_update(ini_config):
         if MAIN_VERSION == config_version:
             print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}")
             # 远程检查更新
-            check_url = "https://github.com/GOOD-AN/mys_exch_goods/raw/main/update_log.json"
+            check_url = "https://fastly.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/update_log.json"
             check_info = requests.get(check_url).json()
             remote_least_version = check_info['least_version'].split('.')
             local_version = MAIN_VERSION.split('.')
             if compare_version(remote_least_version, local_version) == 1:
                 print("版本过低, 程序将停止运行")
-                time.sleep(3000)
+                time.sleep(3)
                 sys.exit()
             remote_last_vesion = check_info['last_vesion'].split('.')
             if compare_version(local_version, remote_last_vesion) == -1:
@@ -107,7 +107,8 @@ def check_update(ini_config):
         print("强制退出")
         sys.exit()
     except Exception as err:
-        print(err)
+        print(f"检查更新失败, 原因为{err}")
+        input("按回车键继续")
         return None
 
 
