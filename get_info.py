@@ -7,47 +7,35 @@ import time
 import pyperclip
 import requests
 
-from com_tool import load_config, check_update, check_plat
-
-MI_URL = 'https://api-takumi.mihoyo.com'
-WEB_URL = 'https://webapi.account.mihoyo.com'
+from com_tool import write_config_file, update_cookie
+import global_var as gl
 
 
-def write_config_file(section, key, value):
+def get_address():
     '''
-    写入配置文件
-    '''
-    try:
-        ini_config.set(section, key, value)
-        path = os.path.abspath(__file__)
-        path = os.path.dirname(path) + '/config.ini'
-        with open(path, "w", encoding="utf-8") as config_file:
-            ini_config.write(config_file)
-            print("写入成功")
-    except KeyboardInterrupt:
-        print("强制退出")
-        sys.exit()
-    except Exception as err:
-        print(err, err.__traceback__.tb_lineno)
-        input("按回车键继续")
-
-
-def get_address() -> None:
-    '''
-    获取收货地址(需登录验证)
+    获取收货地址
+    需要account_id与cookie_token
     '''
     try:
-        mi_cookie = ini_config.get('user_info', 'cookie').strip(" ")
-        if mi_cookie == "":
+        if gl.MI_COOKIE == "":
             print("请先获取Cookie")
             input("按回车键继续")
             return False
-        address_url = MI_URL + '/account/address/list'
+        address_url = gl.MI_URL + '/account/address/list'
         address_headers = {
-            "Cookie": mi_cookie,
+            "Cookie": gl.MI_COOKIE,
         }
         address_list_req = requests.get(address_url, headers=address_headers)
-        address_list = address_list_req.json()["data"]["list"]
+        if address_list_req.status_code != 200:
+            print("请求出错，请稍后重试或联系项目负责人")
+            input("按回车继续")
+            return False
+        address_list_req = address_list_req.json()
+        if address_list_req['data'] is None:
+            print(f"获取出错，错误原因为: {address_list_req['message']}")
+            input("按回车继续")
+            return False
+        address_list = address_list_req["data"]["list"]
         address_id_list = []
         address_id = 1
         for address_data in address_list:
@@ -61,24 +49,25 @@ def get_address() -> None:
             print(f"联系人: {address_data['connect_name']}")
             address_id += 1
             address_id_list.append(address_data['id'])
-        address_id_in = input("请输入需要写入的地址序号(暂只支持一个): ")
-        if address_id_in == "":
-            print("未选择地址序号")
+        while True:
+            address_id_in = input("请输入需要写入的地址序号(暂只支持一个): ")
+            if address_id_in == "":
+                re_input = input("未输入地址序号, 是否重新输入(默认为Y)?(y/n): ")
+            elif not address_id_in.isdigit() or address_id < int(address_id_in) < 0:
+                re_input = input("地址序号输入错误, 是否重新输入(默认为Y)?(y/n): ")
+            else:
+                break
+            if re_input in ('n', 'N'):
+                input("取消写入, 按回车键返回")
+                return
+        if gl.INI_CONFIG.get('user_info', 'address_id'):
+            is_cover = input("已存在地址序号, 是否覆盖(默认为Y)?(y/n): ")
+            if is_cover in ('n', 'N'):
+                input("取消写入, 按回车键返回")
+                return
+            write_config_file('user_info', 'address_id', address_id_list[int(address_id_in) - 1])
         else:
-            if address_id_in.isdigit() and 0 < int(address_id_in) < address_id:
-                if ini_config.get('user_info', 'address_id'):
-                    while True:
-                        is_cover = input("已存在地址序号, 是否覆盖?(y/n): ")
-                        if is_cover == "y":
-                            write_config_file('user_info', 'address_id',
-                                              address_id_list[int(address_id_in) - 1])
-                            break
-                        if is_cover == "n":
-                            break
-                        print("输入错误")
-                else:
-                    write_config_file("user_info", "address_id",
-                                      address_id_list[int(address_id_in) - 1])
+            write_config_file("user_info", "address_id", address_id_list[int(address_id_in) - 1])
         print("地址写入成功")
         input("按回车键继续")
         return True
@@ -87,7 +76,7 @@ def get_address() -> None:
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(err, err.__traceback__.tb_lineno)
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -97,7 +86,7 @@ def get_gift_time(goods_id):
     获取礼物真实兑换时间
     '''
     try:
-        gift_detail_url = MI_URL + "/mall/v1/web/goods/detail"
+        gift_detail_url = gl.MI_URL + "/mall/v1/web/goods/detail"
         gift_detail_params = {
             "app_id": 1,
             "point_sn": "myb",
@@ -116,7 +105,7 @@ def get_gift_time(goods_id):
         print("强制退出")
         sys.exit()
     except Exception as err:
-        print(err, err.__traceback__.tb_lineno)
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -124,10 +113,11 @@ def get_gift_time(goods_id):
 def get_gift_list():
     '''
     获取礼物列表
+    查询该账户是否兑换, 需要account_id与cookie_token, 非必须, 错误也可继续
     '''
     try:
         while True:
-            os.system(CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             print("""\
 1.全部商品
 2.崩坏3
@@ -138,8 +128,9 @@ def get_gift_list():
 0.返回主菜单\
 """)
             game_choice = input("请输入需要查询的序号: ")
-            game_type = ""
-            if game_choice == "2":
+            if game_choice == "1":
+                game_type = ""
+            elif game_choice == "2":
                 game_type = "bh3"
             elif game_choice == "3":
                 game_type = "hk4e"
@@ -154,7 +145,7 @@ def get_gift_list():
             else:
                 input("输入有误，请重新输入(回车以返回)")
                 continue
-            gift_list_url = MI_URL + '/mall/v1/web/goods/list'
+            gift_list_url = gl.MI_URL + '/mall/v1/web/goods/list'
             gift_list_params = {
                 "app_id": 1,
                 "point_sn": "myb",
@@ -164,10 +155,15 @@ def get_gift_list():
                 # '崩坏学园2':'bh2', '未定事件簿':'nxx', '米游社':'bbs'
                 "game": game_type
             }
+            gift_list_headers = {
+                "Cookie": gl.MI_COOKIE,
+            }
             gift_id_list = []
             gift_num = 1
             while True:
-                gift_list_req = requests.get(gift_list_url, params=gift_list_params)
+                gift_list_req = requests.get(gift_list_url,
+                                             params=gift_list_params,
+                                             headers=gift_list_headers)
                 if gift_list_req.status_code != 200:
                     return False
                 gift_list = gift_list_req.json()["data"]
@@ -176,7 +172,8 @@ def get_gift_list():
                     # next_num 表示下次兑换总数量
                     # total 表示当前可兑换总数量
                     if not gift_data['unlimit'] and gift_data['next_num'] == 0 and gift_data[
-                            'total'] == 0:
+                            'total'] == 0 or gift_data['account_exchange_num'] == gift_data[
+                                'account_cycle_limit']:
                         continue
                     print("------------")
                     print(f"商品序号: {gift_num}")
@@ -202,18 +199,21 @@ def get_gift_list():
                     gift_list_params['page'] += 1
                 else:
                     break
+            if not gift_id_list:
+                input("没有可兑换的商品(回车以返回)")
+                continue
             gift_id_in = set(input("请输入需要抢购的商品序号，以空格分开(请注意现有米游币是否足够): ").split(' '))
             if '' not in gift_id_in:
                 gift_id_write = ''
                 for gift_id in gift_id_in:
                     if gift_id.isdigit() and 0 < int(gift_id) < gift_num:
                         gift_id_write += gift_id_list[int(gift_id) - 1] + ','
-                if ini_config.get('exchange_info', 'good_id'):
+                if gl.INI_CONFIG.get('exchange_info', 'good_id'):
                     while True:
                         print("检测到已存在商品id，需要的操作是\n1.追加\n2.替换\n3.删除\n4.取消")
                         choice = input("请输入选项: ")
                         if choice == '1':
-                            gift_id_write += ini_config.get('exchange_info', 'good_id')
+                            gift_id_write += gl.INI_CONFIG.get('exchange_info', 'good_id')
                             gift_id_write_set = set(gift_id_write.split(','))
                             gift_id_write = ','.join(gift_id_write_set)
                             write_config_file('exchange_info', 'good_id', gift_id_write)
@@ -238,7 +238,7 @@ def get_gift_list():
         print("强制退出")
         sys.exit()
     except Exception as err:
-        print(err, err.__traceback__.tb_lineno)
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -258,7 +258,7 @@ def get_app_cookie():
         print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         mobile = input("请输入手机号: ")
         mobile_captcha = input("请输入验证码: ")
-        login_user_url_one = WEB_URL + "/Api/login_by_mobilecaptcha"
+        login_user_url_one = gl.WEB_URL + "/Api/login_by_mobilecaptcha"
         login_user_form_data_one = {
             "mobile": mobile,
             "mobile_captcha": mobile_captcha,
@@ -280,7 +280,7 @@ def get_app_cookie():
             return False
 
         # 获取 stoken
-        user_stoken_url = MI_URL + "/auth/api/getMultiTokenByLoginTicket"
+        user_stoken_url = gl.MI_URL + "/auth/api/getMultiTokenByLoginTicket"
         user_stoken_params = {
             "login_ticket": login_user_cookie_one['login_ticket'],
             "token_types": 3,
@@ -299,7 +299,7 @@ def get_app_cookie():
         pyperclip.copy(login_url)
         print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         mobile_captcha = input("请输入第二次验证码: ")
-        login_user_url_two = MI_URL + "/account/auth/api/webLoginByMobile"
+        login_user_url_two = gl.MI_URL + "/account/auth/api/webLoginByMobile"
         login_user_form_data_two = {
             "is_bh2": False,
             "mobile": mobile,
@@ -317,19 +317,15 @@ def get_app_cookie():
             uer_cookie += key + "=" + value + ";"
         uer_cookie += "login_ticket=" + login_user_cookie_one['login_ticket'] + ";"
         uer_cookie += "stoken=" + user_stoken_data + ";"
+        uer_cookie += "stuid=" + login_user_cookie_two['account_id'] + ";"
 
         # 写入文件
-        if ini_config.get('user_info', 'cookie'):
-            while True:
-                print("检测到已有cookie, 是否覆盖? (y/n)")
-                is_overwrite = input("请输入: ")
-                if is_overwrite == "y":
-                    write_config_file('user_info', 'cookie', uer_cookie)
-                    break
-                if is_overwrite == "n":
-                    break
-                print("输入错误, 请重新输入")
-                continue
+        if gl.INI_CONFIG.get('user_info', 'cookie'):
+            is_overwrite = input("检测到已有cookie, 是否覆盖(默认Y)?(y/n): ")
+            if is_overwrite in ('n', 'N'):
+                input("取消写入, 按回车键返回")
+                return
+            write_config_file('user_info', 'cookie', uer_cookie)
         else:
             write_config_file('user_info', 'cookie', uer_cookie)
         print("cookie 写入成功")
@@ -339,26 +335,26 @@ def get_app_cookie():
         print("强制退出")
         sys.exit()
     except Exception as err:
-        print(err, err.__traceback__.tb_lineno)
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
 
-def start():
+def info_main():
     '''
     开始任务
     '''
     try:
         while True:
-            os.system(CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             print("""选择功能:
 1. 获取Cookie
 2. 查询收货地址
 3. 查询商品ID
-4. 检查更新
-0. 退出""")
+4. 更新Cookie
+0. 返回""")
             select_function = input("请输入选择功能的序号: ")
-            os.system(CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             if select_function == "1":
                 get_app_cookie()
             elif select_function == "2":
@@ -366,30 +362,15 @@ def start():
             elif select_function == "3":
                 get_gift_list()
             elif select_function == "4":
-                check_update(ini_config)
+                update_cookie()
             elif select_function == "0":
-                sys.exit()
+                return
             else:
                 input("输入有误，请重新输入(回车以返回)")
     except KeyboardInterrupt:
         print("强制退出")
         sys.exit()
     except Exception as err:
-        print(err, err.__traceback__.tb_lineno)
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
-        sys.exit()
-
-
-if __name__ == '__main__':
-    try:
-        CLEAR_TYPE = check_plat()
-        ini_config = load_config()
-        check_update(ini_config)
-        start()
-    except KeyboardInterrupt:
-        print("强制退出")
-        sys.exit()
-    except Exception as main_err:
-        print(main_err, main_err.__traceback__.tb_lineno)
-        input("按回车键继续")
-        sys.exit()
+        return False

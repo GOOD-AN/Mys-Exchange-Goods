@@ -13,18 +13,18 @@
 
 | 参数       | 说明                                                         |
 | ---------- | ------------------------------------------------------------ |
-| cookie     | 用户`cookie`数据, 使用`get_info.py`获取                      |
+| cookie     | 用户`cookie`数据                                             |
 | uid        | 用户游戏内UID, 暂需手动填写, 填写为需要兑换的游戏商品对应的UID, 暂只支持一个 |
-| address_id | 用户收货地址ID, 使用`get_info.py`获取                        |
+| address_id | 用户收货地址ID                                               |
 
 [exchange_info]
 
-| 参数    | 说明                                    |
-| ------- | --------------------------------------- |
-| good_id | 需要兑换的商品ID, 使用`get_info.py`获取 |
-| time    | 兑换商品的开始时间, 需手动填写          |
-| thread  | 每个商品同时请求兑换的线程数            |
-| retry   | 请求时重试次数                          |
+| 参数    | 说明                           |
+| ------- | ------------------------------ |
+| good_id | 需要兑换的商品ID               |
+| time    | 兑换商品的开始时间, 需手动填写 |
+| thread  | 每个商品同时请求兑换的线程数   |
+| retry   | 请求时重试次数                 |
 
 [check_network]
 
@@ -67,9 +67,9 @@ enable = true
 ntp_server = ntp.aliyun.com
 ```
 
-### 运行`exchange_gift.py`
+### 运行`main.py`
 
-`python exchange_gift.py`
+`python main.py`
 
 ## 其他
 

@@ -1,11 +1,16 @@
 {
     "least_version": "1.0.0",
-    "last_vesion": "1.0.0",
+    "last_vesion": "1.1.0",
     "update_log":[
         {
             "version": "1.0.0",
             "update_time": "2022-09-07",
             "update_content": "第一版发布"
+        },
+        {
+            "version": "1.1.0",
+            "update_time": "2022-10-31",
+            "update_content": "1.新增主程序, 优化使用体验 2.优化部分功能逻辑"
         }
     ]
 }
