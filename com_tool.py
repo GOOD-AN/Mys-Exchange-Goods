@@ -15,7 +15,7 @@ import requests
 
 import global_var as gl
 
-MAIN_VERSION = '1.1.1'
+MAIN_VERSION = '1.1.2'
 MYS_SALT = "PVeGWIZACpxXZ1ibMVJPi9inCY4Nd4y2"
 MYS_SALT_TWO = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v"
 MYS_SALT_WEB = "yUZ3s0Sna1IrSNfk29Vo6vRapdOyqyhB"
@@ -122,37 +122,49 @@ def check_update():
         if MAIN_VERSION == config_version:
             print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}")
             # 远程检查更新
-            check_url = "https://fastly.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/update_log.json"
-            check_info = requests.get(check_url, timeout=15).json()
+            check_info = ''
+            for check_update_url in gl.CHECK_UPDATE_URL_LIST:
+                check_url = check_update_url + "/update_log.json"
+                try:
+                    check_info = requests.get(check_url, timeout=15).json()
+                    break
+                except requests.exceptions.ConnectionError:
+                    continue
+            if not check_info:
+                print("检查更新失败")
+                return False
             remote_least_version = check_info['least_version'].split('.')
             local_version = MAIN_VERSION.split('.')
             if compare_version(remote_least_version, local_version) == 1:
                 print("版本过低, 程序将停止运行")
+                print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
                 time.sleep(3)
                 sys.exit()
             remote_last_vesion = check_info['last_vesion'].split('.')
             if compare_version(local_version, remote_last_vesion) == -1:
                 remote_update_log_list = check_info['update_log']
                 print(f"当前程序版本为v{MAIN_VERSION}, 最新程序版本为v{check_info['last_vesion']}")
-                print("当前非最新版本，建议更新")
+                print("当前非最新版本，建议更新\n")
                 print("更新概览: ")
+                print("=" * 50)
                 for update_log in remote_update_log_list:
                     if compare_version(update_log['version'].split('.'), local_version) == 1:
-                        print(f"版本: {update_log['version']}")
+                        print("版本: ", f"{update_log['version']}".center(12))
                         print(f"更新时间: {update_log['update_time']}")
-                        print(f"更新说明: {update_log['update_content']}")
+                        print(f"更新说明: {update_log['update_content'][0]}")
+                        for content in update_log['update_content'][1:]:
+                            print(content.rjust(20))
+                        print("=" * 50)
                 print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
         else:
             print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
             print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
-        input("按回车键继续")
         return None
     except KeyboardInterrupt:
         print("强制退出")
         sys.exit()
     except Exception as err:
         print(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
         return None
 
 

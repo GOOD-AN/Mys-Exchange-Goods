@@ -1,4 +1,4 @@
-# mys_exch_goods
+# Mys-Exchange-Goods
 用于兑换米游社商品
 
 ## 使用说明
