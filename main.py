@@ -1,20 +1,20 @@
-'''
+"""
 运行主程序
-'''
+"""
 
 import os
 import sys
 
-from com_tool import check_plat, check_update, load_config, check_cookie, update_cookie
+from tools import check_plat, check_update, load_config, check_cookie, update_cookie
 from get_info import info_main
 from exchange_gift import gift_main
-import global_var as gl
+import tools.global_var as gl
 
 
 def start():
-    '''
+    """
     开始任务
-    '''
+    """
     try:
         if gl.MI_COOKIE and not check_cookie():
             print("Cookie失效, 尝试更新")
@@ -49,9 +49,11 @@ def start():
 
 if __name__ == '__main__':
     try:
+        gl.CONFIG_PATH = os.path.dirname(os.path.abspath(__file__)) + os.sep + "config"
         gl.INI_CONFIG = load_config()
         gl.CLEAR_TYPE = check_plat()
         check_update()
+        input("按回车键继续")
         gl.MI_COOKIE = gl.INI_CONFIG.get('user_info', 'cookie').strip(" ")
         start()
     except KeyboardInterrupt:

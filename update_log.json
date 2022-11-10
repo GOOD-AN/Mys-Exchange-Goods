@@ -1,6 +1,6 @@
 {
-    "least_version": "1.0.0",
-    "last_vesion": "1.1.1",
+    "least_version": "2.0.0",
+    "last_vesion": "2.0.0",
     "update_log":[
         {
             "version": "1.0.0",
@@ -10,7 +10,7 @@
         {
             "version": "1.1.0",
             "update_time": "2022-10-31",
-            "update_content": ["1.新增主程序, 优化使用体验","2.优化部分功能逻辑"]
+            "update_content": ["1.新增主程序, 优化使用体验", "2.优化部分功能逻辑"]
         },
         {
             "version": "1.1.1",
@@ -21,6 +21,11 @@
             "version": "1.1.2",
             "update_time": "2022-11-01",
             "update_content": ["更新检测到新版本时的输出"]
+        },
+        {
+            "version": "2.0.0",
+            "update_time": "2022-11-10",
+            "update_content": ["1.项目目录重构", "2.优化部分功能逻辑"]
         }
     ]
 }

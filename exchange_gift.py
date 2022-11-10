@@ -1,6 +1,6 @@
-'''
+"""
 米游社商品兑换
-'''
+"""
 import os
 import sys
 import threading
@@ -8,107 +8,17 @@ import time
 import requests
 from ping3 import ping
 
-from com_tool import check_cookie, get_time, get_cookie_str, update_cookie
-import global_var as gl
+from tools import get_time, get_cookie_str, check_cookie, update_cookie, get_gift_detail, check_game_roles
+import tools.global_var as gl
 
 CHECK_URL = 'api-takumi.mihoyo.com'
 
 
-def get_gift_biz(goods_id: int):
-    '''
-    获取商品所属分区与类型
-    '''
-    try:
-        gift_detail_url = gl.MI_URL + "/mall/v1/web/goods/detail"
-        gift_detail_params = {
-            "app_id": 1,
-            "point_sn": "myb",
-            "goods_id": goods_id,
-        }
-        gift_detail_req = requests.get(gift_detail_url, params=gift_detail_params)
-        if gift_detail_req.status_code != 200:
-            return False
-        gift_detail = gift_detail_req.json()["data"]
-        if gift_detail is None:
-            return False
-        return gift_detail['game_biz'], gift_detail['type']
-    except KeyboardInterrupt:
-        print("强制退出")
-        sys.exit()
-    except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        return False
-
-
-def get_action_ticket():
-    '''
-    获取查询所需 ticket
-    需要stoken与账户ID
-    '''
-    try:
-        stoken = get_cookie_str('stoken')
-        uid = get_cookie_str('account_id') or get_cookie_str('ltuid') or get_cookie_str('stuid')
-        action_ticket_url = gl.MI_URL + "/auth/api/getActionTicketBySToken"
-        action_ticket_params = {"action_type": "game_role", "stoken": stoken, "uid": uid}
-        action_ticket_req = requests.get(action_ticket_url, params=action_ticket_params)
-        if action_ticket_req.status_code != 200:
-            print("ticket请求失败，请检查cookie")
-            return False
-        if action_ticket_req.json()['data'] is None:
-            print(f"ticket获取失败, 原因为{action_ticket_req.json()['message']}")
-            return False
-        return action_ticket_req.json()['data']['ticket']
-    except KeyboardInterrupt:
-        print("强制退出")
-        sys.exit()
-    except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        return False
-
-
-def check_game_roles(action_ticket, game_biz, uid):
-    '''
-    检查是否绑定角色
-    '''
-    try:
-        game_roles_url = gl.MI_URL + "/binding/api/getUserGameRoles"
-        game_roles_params = {
-            "point_sn": "myb",
-            "action_ticket": action_ticket,
-            "game_biz": game_biz
-        }
-        game_roles_headers = {"cookie": gl.MI_COOKIE}
-        game_roles_req = requests.get(game_roles_url,
-                                      headers=game_roles_headers,
-                                      params=game_roles_params)
-        if game_roles_req.status_code != 200:
-            print("检查角色请求失败，请检查传入参数")
-            return False
-        game_roles_req = game_roles_req.json()
-        if game_roles_req['retcode'] != 0:
-            print(f"检查角色失败, 原因为{game_roles_req['message']}")
-            return False
-        game_roles_list = game_roles_req['data']['list']
-        if not game_roles_list:
-            print('没有绑定任何角色')
-            return False
-        for game_roles in game_roles_list:
-            if game_roles['game_biz'] == game_biz and game_roles['game_uid'] == str(uid):
-                return True
-        return False
-    except KeyboardInterrupt:
-        print("强制退出")
-        sys.exit()
-    except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        return False
-
-
-def post_exchange_gift(gift_id, biz, gift_type):
-    '''
+def post_exchange_gift(gift_id, biz):
+    """
     兑换礼物
     需要account_id与cookie_token
-    '''
+    """
     try:
         exchange_gift_url = gl.MI_URL + "/mall/v1/web/goods/exchange"
         exchange_gift_json = {
@@ -117,8 +27,7 @@ def post_exchange_gift(gift_id, biz, gift_type):
             "goods_id": str(gift_id),
             "exchange_num": 1,
             "address_id": gl.INI_CONFIG.getint('user_info', 'address_id'),
-            "uid": get_cookie_str('account_id') or get_cookie_str('ltuid')
-            or get_cookie_str('stuid'),
+            "uid": get_cookie_str('account_id') or get_cookie_str('ltuid') or get_cookie_str('stuid'),
             "region": "cn_gf01",
             "game_biz": biz
         }
@@ -126,9 +35,8 @@ def post_exchange_gift(gift_id, biz, gift_type):
             "Cookie": gl.MI_COOKIE,
         }
         if biz == 'bbs_cn':
-            exchange_gift_json['uid'] = gl.INI_CONFIG.getint('user_info', 'uid')
-        # if gift_type != 2:
-        #     exchange_gift_json['address_id'] = gl.INI_CONFIG.getint('user_info', 'address_id')
+            exchange_gift_json['uid'] = gl.INI_CONFIG.getint('user_info', 'game_uid')
+        exchange_gift_req = ''
         for _ in range(gl.INI_CONFIG.getint('exchange_info', 'retry')):
             exchange_gift_req = requests.post(exchange_gift_url,
                                               headers=exchange_gift_headers,
@@ -155,9 +63,9 @@ def post_exchange_gift(gift_id, biz, gift_type):
 
 
 def init_task():
-    '''
+    """
     初始化任务
-    '''
+    """
     try:
         gift_list = gl.INI_CONFIG.get('exchange_info', 'good_id').split(',')
         task_thread = gl.INI_CONFIG.getint('exchange_info', 'thread')
@@ -166,23 +74,17 @@ def init_task():
             print("Cookie失效, 尝试更新")
             update_cookie()
         for good_id in gift_list:
-            gift_biz, gift_type = get_gift_biz(good_id)
+            gift_biz, gift_type = get_gift_detail(good_id, 'biz')
             if not gift_biz:
                 print("获取game_biz失败")
                 continue
             if gift_biz != 'bbs_cn':
-                action_ticket = get_action_ticket()
-                if not action_ticket:
-                    print("获取ticket失败")
-                    continue
-                if not check_game_roles(action_ticket, gift_biz,
-                                        gl.INI_CONFIG.get('user_info', 'uid')):
-                    print("查询绑定角色失败")
+                if not check_game_roles(gift_biz, gl.INI_CONFIG.get('user_info', 'game_uid'), 'check'):
                     continue
             for _ in range(task_thread):
                 task_list.append(
                     threading.Thread(target=post_exchange_gift,
-                                     args=(good_id, gift_biz, gift_type)))
+                                     args=(good_id, gift_biz)))
         return task_list
     except KeyboardInterrupt:
         print("强制退出")
@@ -193,9 +95,9 @@ def init_task():
 
 
 def run_task(task_list):
-    '''
+    """
     运行任务
-    '''
+    """
     try:
         start_timestamp = gl.INI_CONFIG.get('exchange_info', 'time')
         start_time = time.mktime(time.strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
@@ -218,7 +120,7 @@ def run_task(task_list):
                 for task in task_list:
                     task.join()
                 print("兑换任务执行完毕")
-                sys.exit()
+                return
             elif now_time != temp_time:
                 os.system(gl.CLEAR_TYPE)
                 if not check_network_enable:
@@ -240,7 +142,7 @@ def run_task(task_list):
                         truth_start_time = start_time - delay_time
                     else:
                         truth_start_time = start_time
-                print(f"当前时间 {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))}")
+                print(f"当前时间 {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now_time))}")
                 time_t = truth_start_time - now_time
                 print(
                     f"距离兑换开始还有 {int(time_t / 3600)} 小时 {int(time_t % 3600 / 60)} 分钟 {int(time_t % 60)} 秒"
@@ -255,19 +157,22 @@ def run_task(task_list):
 
 
 def gift_main():
-    '''
+    """
     开始任务
-    '''
+    """
     try:
         if not gl.MI_COOKIE:
             print("请填写cookie")
-            sys.exit()
+            input("按回车键返回")
+            return True
         task_list = init_task()
         if not task_list:
-            print("没有任务, 程序退出")
-            sys.exit()
+            print("没有任务, 即将返回主菜单")
+            input("按回车键返回")
+            return True
         run_task(task_list)
-        print("程序运行完毕, 即将退出")
+        print("程序运行完毕, 即将返回主菜单")
+        input("按回车键返回")
         return True
     except KeyboardInterrupt:
         print("强制退出")
