@@ -104,6 +104,8 @@ def get_point():
     需要stoken与stuid
     """
     try:
+        if get_cookie_str("stoken") == "" or get_cookie_str("stuid") == "":
+            return False
         point_url = gl.BBS_URL + '/apihub/sapi/getUserMissionsState'
         point_headers = {
             'Cookie': gl.MI_COOKIE,
@@ -118,7 +120,7 @@ def get_point():
             print(f"获取米游币数量失败, 原因为{point_req['message']}")
             input("按回车键继续")
             return False
-        return point_req['data']['total_points'], point_req['data']['can_get_points']
+        return point_req['data']['total_points']
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")

@@ -7,7 +7,7 @@ import time
 import pyperclip
 import requests
 
-from tools import write_config_file, update_cookie, get_gift_detail, check_game_roles, GAME_NAME, YS_SERVER
+from tools import write_config_file, update_cookie, get_gift_detail, check_game_roles, get_point, GAME_NAME, YS_SERVER
 import tools.global_var as gl
 
 
@@ -149,7 +149,7 @@ def get_address():
             address_id_in = input("请输入需要写入的地址序号(暂只支持一个): ")
             if address_id_in == "":
                 re_input = input("未输入地址序号, 是否重新输入(默认为Y)?(y/n): ")
-            elif not address_id_in.isdigit() or address_id < int(address_id_in) < 0:
+            elif not address_id_in.isdigit() or address_id < int(address_id_in) or int(address_id_in) <= 0:
                 re_input = input("地址序号输入错误, 是否重新输入(默认为Y)?(y/n): ")
             else:
                 break
@@ -203,7 +203,7 @@ def get_game_uid():
             game_uid_in = input("请输入需要写入的游戏UID序号(暂只支持一个): ")
             if game_uid_in == "":
                 re_input = input("未输入游戏UID序号, 是否重新输入(默认为Y)?(y/n): ")
-            elif not game_uid_in.isdigit() or game_uid_id < int(game_uid_in) < 0:
+            elif not game_uid_in.isdigit() or game_uid_id < int(game_uid_in) or int(game_uid_in) <= 0:
                 re_input = input("游戏UID序号输入错误, 是否重新输入(默认为Y)?(y/n): ")
             else:
                 break
@@ -274,6 +274,7 @@ def get_gift_list():
                 "Cookie": gl.MI_COOKIE,
             }
             gift_id_list = []
+            gift_point_list = []
             gift_num = 1
             while True:
                 gift_list_req = requests.get(gift_list_url,
@@ -309,6 +310,7 @@ def get_gift_list():
                         print(f"本月限购: {gift_data['account_cycle_limit']} 个")
                     gift_num += 1
                     gift_id_list.append(gift_data['goods_id'])
+                    gift_point_list.append(gift_data['price'])
                 if gift_list['total'] > gift_list_params['page'] * gift_list_params['page_size']:
                     gift_list_params['page'] += 1
                 else:
@@ -319,9 +321,17 @@ def get_gift_list():
             gift_id_in = set(input("请输入需要抢购的商品序号，以空格分开(请注意现有米游币是否足够): ").split(' '))
             if '' not in gift_id_in:
                 gift_id_write = ''
+                gift_point = 0
                 for gift_id in gift_id_in:
                     if gift_id.isdigit() and 0 < int(gift_id) < gift_num:
                         gift_id_write += gift_id_list[int(gift_id) - 1] + ','
+                        gift_point += gift_point_list[int(gift_id) - 1]
+                user_point = get_point()
+                if user_point and user_point < gift_point:
+                    print(f"当前米游币不足，当前米游币: {user_point}，所需米游币: {gift_point}")
+                    choice = input("是否继续选择商品, 取消将返回上级菜单(默认为继续Y/N): ")
+                    if choice in ('n', 'N'):
+                        return True
                 if gl.INI_CONFIG.get('exchange_info', 'good_id'):
                     while True:
                         print("检测到已存在商品id，需要的操作是\n1.追加\n2.替换\n3.删除\n4.取消")
@@ -369,7 +379,8 @@ def info_main():
 2. 查询收货地址
 3. 查询绑定游戏UID
 4. 查询商品ID
-5. 更新Cookie
+5. 查询米游币
+6. 更新Cookie
 0. 返回主菜单""")
             select_function = input("请输入选择功能的序号: ")
             os.system(gl.CLEAR_TYPE)
@@ -382,6 +393,11 @@ def info_main():
             elif select_function == "4":
                 get_gift_list()
             elif select_function == "5":
+                now_point = get_point()
+                if now_point:
+                    print(f"当前米游币: {now_point}")
+                    input("按回车键继续")
+            elif select_function == "6":
                 update_cookie()
             elif select_function == "0":
                 return
