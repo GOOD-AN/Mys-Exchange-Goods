@@ -134,10 +134,10 @@ def check_update():
                 return False
             remote_least_version = check_info['least_version'].split('.')
             local_version = MAIN_VERSION.split('.')
-            remote_last_vesion = check_info['last_vesion'].split('.')
-            if compare_version(local_version, remote_last_vesion) == -1:
+            remote_last_version = check_info['last_version'].split('.')
+            if compare_version(local_version, remote_last_version) == -1:
                 remote_update_log_list = check_info['update_log']
-                print(f"当前程序版本为v{MAIN_VERSION}, 最新程序版本为v{check_info['last_vesion']}")
+                print(f"当前程序版本为v{MAIN_VERSION}, 最新程序版本为v{check_info['last_version']}")
                 print("当前非最新版本，建议更新\n")
                 print("更新概览: ")
                 print("=" * 50)

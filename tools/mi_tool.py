@@ -105,10 +105,10 @@ def get_point():
     """
     try:
         point_url = gl.BBS_URL + '/apihub/sapi/getUserMissionsState'
-        point_hearders = {
+        point_headers = {
             'Cookie': gl.MI_COOKIE,
         }
-        point_req = requests.get(point_url, headers=point_hearders)
+        point_req = requests.get(point_url, headers=point_headers)
         if point_req.status_code != 200:
             print(f"获取米游币数量失败, 返回状态码为{point_req.status_code}")
             input("按回车键继续")
