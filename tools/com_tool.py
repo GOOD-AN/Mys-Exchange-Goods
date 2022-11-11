@@ -13,7 +13,7 @@ import requests
 
 import tools.global_var as gl
 
-MAIN_VERSION = '2.0.0'
+MAIN_VERSION = '2.0.1'
 CHECK_UPDATE_URL_LIST = [
     'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
     'https://fastly.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
