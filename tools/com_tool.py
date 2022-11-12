@@ -1,19 +1,19 @@
 """
 通用函数
 """
-import hashlib
-import os
-import platform
-import configparser
-import re
-import sys
-import time
-import ntplib
-import requests
+from hashlib import md5
+from os import path
+from platform import system
+from configparser import ConfigParser
+from re import compile
+from sys import exit
+from time import sleep, time
+from ntplib import NTPClient
+from requests import get, exceptions
 
 import tools.global_var as gl
 
-MAIN_VERSION = '2.0.1'
+MAIN_VERSION = '2.0.2'
 CHECK_UPDATE_URL_LIST = [
     'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
     'https://fastly.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
@@ -26,32 +26,32 @@ def check_plat():
     检查平台
     """
     try:
-        if platform.system() == "Windows":
+        if system() == "Windows":
             return "cls"
         return "clear"
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(err)
-        sys.exit()
+        exit()
 
 
 def load_config():
     """
     加载配置文件
     """
-    config = configparser.ConfigParser()
+    config = ConfigParser()
     try:
-        path = gl.CONFIG_PATH + os.sep + 'config.ini'
-        config.read_file(open(path, "r", encoding="utf-8"))
+        config_path = path.join(gl.CONFIG_PATH, 'config.ini')
+        config.read_file(open(config_path, "r", encoding="utf-8"))
         return config
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(err)
-        sys.exit()
+        exit()
 
 
 def get_cookie_str(target):
@@ -59,14 +59,14 @@ def get_cookie_str(target):
     获取cookie字符串中相应的数据
     """
     try:
-        pattern_str = re.compile(target + '=(.*?);')
+        pattern_str = compile(target + '=(.*?);')
         result_str = pattern_str.search(gl.MI_COOKIE)
         if result_str:
             return result_str.group(1)
         return ''
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
@@ -78,8 +78,8 @@ def write_config_file(section, key, value):
     """
     try:
         gl.INI_CONFIG.set(section, key, value)
-        path = gl.CONFIG_PATH + os.sep + 'config.ini'
-        with open(path, "w", encoding="utf-8") as config_file:
+        config_path = path.join(gl.CONFIG_PATH, 'config.ini')
+        with open(config_path, "w", encoding="utf-8") as config_file:
             gl.INI_CONFIG.write(config_file)
             print("写入成功")
         gl.INI_CONFIG = load_config()
@@ -87,7 +87,7 @@ def write_config_file(section, key, value):
             gl.MI_COOKIE = value
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -106,10 +106,10 @@ def compare_version(old_version, new_version):
         return 0
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        sys.exit()
+        exit()
 
 
 def check_update():
@@ -125,9 +125,9 @@ def check_update():
             for check_update_url in CHECK_UPDATE_URL_LIST:
                 check_url = check_update_url + "update_log.json"
                 try:
-                    check_info = requests.get(check_url, timeout=5).json()
+                    check_info = get(check_url, timeout=5).json()
                     break
-                except requests.exceptions.RequestException:
+                except exceptions.RequestException:
                     continue
             if not check_info:
                 print("检查更新失败")
@@ -152,8 +152,8 @@ def check_update():
                 if compare_version(remote_least_version, local_version) == 1:
                     print("版本过低, 程序将停止运行")
                     print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
-                    time.sleep(3)
-                    sys.exit()
+                    sleep(3)
+                    exit()
                 print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
         else:
             print(f"当前程序版本为v{MAIN_VERSION}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
@@ -161,7 +161,7 @@ def check_update():
         return None
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
@@ -173,14 +173,14 @@ def get_time(ntp_enable, ntp_server):
     """
     try:
         if not ntp_enable:
-            return time.time()
-        return ntplib.NTPClient().request(ntp_server).tx_time
+            return time()
+        return NTPClient().request(ntp_server).tx_time
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"网络时间获取失败, 原因为{err}, 转为本地时间")
-        return time.time()
+        return time()
 
 
 def md5_encode(text):
@@ -188,12 +188,12 @@ def md5_encode(text):
     md5加密
     """
     try:
-        md5_str = hashlib.md5()
+        md5_str = md5()
         md5_str.update(text.encode('utf-8'))
         return md5_str.hexdigest()
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(err)
-        sys.exit()
+        exit()
