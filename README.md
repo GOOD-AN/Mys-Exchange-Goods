@@ -10,6 +10,10 @@
 
 ## 使用说明
 
+*可直接运行已打包程序[在此下载](https://github.com/GOOD-AN/Mys-Exchange-Goods/releases/latest), 按第二步配置文件后, 打开exe即可使用。
+
+以下步骤为希望源码运行的用户使用。
+
 ### 第一步、安装所需运行库
 
 `pip install -r requirements.txt`
@@ -76,7 +80,7 @@ enable = true
 ntp_server = ntp.aliyun.com
 ```
 
-### 第三步、运行`main.py`或直接运行已打包程序[在此下载](https://github.com/GOOD-AN/Mys-Exchange-Goods/releases/latest)
+### 第三步、运行`main.py`
 
 `python main.py`
 
