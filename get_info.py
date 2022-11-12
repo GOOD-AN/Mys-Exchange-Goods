@@ -1,14 +1,15 @@
 """
 米游社兑换所需信息获取
 """
-import sys
-import os
-import time
-import pyperclip
-import requests
+from os import system
+from sys import exit
+from time import localtime, strftime
 
-from tools import write_config_file, update_cookie, get_gift_detail, check_game_roles, get_point, GAME_NAME, YS_SERVER
+from pyperclip import copy
+from requests import get, utils, post
+
 import tools.global_var as gl
+from tools import write_config_file, update_cookie, get_gift_detail, check_game_roles, get_point, GAME_NAME, YS_SERVER
 
 
 def get_app_cookie():
@@ -22,7 +23,7 @@ def get_app_cookie():
     try:
         login_url = 'https://user.mihoyo.com/#/login/captcha'
         print(f"请在浏览器打开{login_url}, 输入手机号后获取验证码，但不要登录，然后在下方按提示输入数据。")
-        pyperclip.copy(login_url)
+        copy(login_url)
         print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         mobile = input("请输入手机号: ")
         mobile_captcha = input("请输入验证码: ")
@@ -33,8 +34,8 @@ def get_app_cookie():
             "source": "user.mihoyo.com"
         }
         # 获取第一个 cookie
-        login_user_req_one = requests.post(login_user_url_one, login_user_form_data_one)
-        login_user_cookie_one = requests.utils.dict_from_cookiejar(login_user_req_one.cookies)
+        login_user_req_one = post(login_user_url_one, login_user_form_data_one)
+        login_user_cookie_one = utils.dict_from_cookiejar(login_user_req_one.cookies)
         if "login_ticket" not in login_user_cookie_one:
             print("缺少'login_ticket'字段，请重新获取")
             return False
@@ -53,7 +54,7 @@ def get_app_cookie():
             "token_types": 3,
             "uid": mys_uid
         }
-        user_stoken_req = requests.get(user_stoken_url, params=user_stoken_params)
+        user_stoken_req = get(user_stoken_url, params=user_stoken_params)
         user_stoken_data = None
         if user_stoken_req.status_code == 200:
             user_stoken_data = user_stoken_req.json()["data"]["list"][0]["token"]
@@ -63,7 +64,7 @@ def get_app_cookie():
 
         # 获取第二个 cookie
         print("重新在此页面(刷新或重新打开)获取验证码，依旧不要登录，在下方输入数据。")
-        pyperclip.copy(login_url)
+        copy(login_url)
         print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         mobile_captcha = input("请输入第二次验证码: ")
         login_user_url_two = gl.MI_URL + "/account/auth/api/webLoginByMobile"
@@ -74,8 +75,8 @@ def get_app_cookie():
             "action_type": "login",
             "token_type": 6
         }
-        login_user_req_two = requests.post(login_user_url_two, json=login_user_form_data_two)
-        login_user_cookie_two = requests.utils.dict_from_cookiejar(login_user_req_two.cookies)
+        login_user_req_two = post(login_user_url_two, json=login_user_form_data_two)
+        login_user_cookie_two = utils.dict_from_cookiejar(login_user_req_two.cookies)
         if "cookie_token" not in login_user_cookie_two:
             print("缺少'cookie_token'字段，请重新获取")
             return False
@@ -100,7 +101,7 @@ def get_app_cookie():
         return True
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -121,7 +122,7 @@ def get_address():
         address_headers = {
             "Cookie": gl.MI_COOKIE,
         }
-        address_list_req = requests.get(address_url, headers=address_headers)
+        address_list_req = get(address_url, headers=address_headers)
         if address_list_req.status_code != 200:
             print("请求出错，请稍后重试或联系项目负责人")
             input("按回车继续")
@@ -156,6 +157,7 @@ def get_address():
             if re_input in ('n', 'N'):
                 input("取消写入, 按回车键返回")
                 return
+        print(address_id < int(address_id_in) <= 0)
         if gl.INI_CONFIG.get('user_info', 'address_id'):
             is_cover = input("已存在地址序号, 是否覆盖(默认为Y)?(y/n): ")
             if is_cover in ('n', 'N'):
@@ -168,7 +170,7 @@ def get_address():
     except KeyboardInterrupt:
         print("强制退出")
         input("按回车键继续")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -222,7 +224,7 @@ def get_game_uid():
     except KeyboardInterrupt:
         print("强制退出")
         input("按回车键继续")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -236,7 +238,7 @@ def get_gift_list():
     """
     try:
         while True:
-            os.system(gl.CLEAR_TYPE)
+            system(gl.CLEAR_TYPE)
             print("""\
 1.全部商品
 2.崩坏3
@@ -277,9 +279,9 @@ def get_gift_list():
             gift_point_list = []
             gift_num = 1
             while True:
-                gift_list_req = requests.get(gift_list_url,
-                                             params=gift_list_params,
-                                             headers=gift_list_headers)
+                gift_list_req = get(gift_list_url,
+                                    params=gift_list_params,
+                                    headers=gift_list_headers)
                 if gift_list_req.status_code != 200:
                     return False
                 gift_list = gift_list_req.json()["data"]
@@ -301,8 +303,8 @@ def get_gift_list():
                     if gift_data['next_time'] == 0:
                         print("商品兑换时间: 任何时段")
                     else:
-                        gift_time = time.localtime(get_gift_detail(gift_data['goods_id']))
-                        print(f"商品兑换时间: {time.strftime('%Y-%m-%d %H:%M:%S', gift_time)}")
+                        gift_time = localtime(get_gift_detail(gift_data['goods_id']))
+                        print(f"商品兑换时间: {strftime('%Y-%m-%d %H:%M:%S', gift_time)}")
                     # month 为每月限购
                     if gift_data["account_cycle_type"] == "forever":
                         print(f"每人限购: {gift_data['account_cycle_limit']} 个")
@@ -360,7 +362,7 @@ def get_gift_list():
             input("按回车键继续")
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -373,7 +375,7 @@ def info_main():
     """
     try:
         while True:
-            os.system(gl.CLEAR_TYPE)
+            system(gl.CLEAR_TYPE)
             print("""选择功能:
 1. 获取Cookie
 2. 查询收货地址
@@ -383,7 +385,7 @@ def info_main():
 6. 更新Cookie
 0. 返回主菜单""")
             select_function = input("请输入选择功能的序号: ")
-            os.system(gl.CLEAR_TYPE)
+            system(gl.CLEAR_TYPE)
             if select_function == "1":
                 get_app_cookie()
             elif select_function == "2":
@@ -405,7 +407,7 @@ def info_main():
                 input("输入有误，请重新输入(回车以返回)")
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")

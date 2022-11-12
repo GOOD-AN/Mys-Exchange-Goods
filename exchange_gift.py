@@ -1,15 +1,16 @@
 """
 米游社商品兑换
 """
-import os
-import sys
-import threading
 import time
-import requests
-from ping3 import ping
+from os import system
+from sys import exit
+from threading import Thread
 
-from tools import get_time, get_cookie_str, check_cookie, update_cookie, get_gift_detail, check_game_roles
+from ping3 import ping
+from requests import post
+
 import tools.global_var as gl
+from tools import get_time, get_cookie_str, check_cookie, update_cookie, get_gift_detail, check_game_roles
 
 CHECK_URL = 'api-takumi.mihoyo.com'
 
@@ -38,9 +39,9 @@ def post_exchange_gift(gift_id, biz):
             exchange_gift_json['uid'] = gl.INI_CONFIG.getint('user_info', 'game_uid')
         exchange_gift_req = ''
         for _ in range(gl.INI_CONFIG.getint('exchange_info', 'retry')):
-            exchange_gift_req = requests.post(exchange_gift_url,
-                                              headers=exchange_gift_headers,
-                                              json=exchange_gift_json)
+            exchange_gift_req = post(exchange_gift_url,
+                                     headers=exchange_gift_headers,
+                                     json=exchange_gift_json)
             if exchange_gift_req.status_code != 429:
                 break
             time.sleep(1)
@@ -56,7 +57,7 @@ def post_exchange_gift(gift_id, biz):
         return True
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
@@ -83,12 +84,12 @@ def init_task():
                     continue
             for _ in range(task_thread):
                 task_list.append(
-                    threading.Thread(target=post_exchange_gift,
-                                     args=(good_id, gift_biz)))
+                    Thread(target=post_exchange_gift,
+                           args=(good_id, gift_biz)))
         return task_list
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
@@ -113,7 +114,7 @@ def run_task(task_list):
         while True:
             now_time = get_time(ntp_enable, ntp_server)
             if now_time >= truth_start_time:
-                os.system(gl.CLEAR_TYPE)
+                system(gl.CLEAR_TYPE)
                 print("开始执行兑换任务")
                 for task in task_list:
                     task.start()
@@ -122,7 +123,7 @@ def run_task(task_list):
                 print("兑换任务执行完毕")
                 return
             elif now_time != temp_time:
-                os.system(gl.CLEAR_TYPE)
+                system(gl.CLEAR_TYPE)
                 if not check_network_enable:
                     print("网络检查未开启")
                 elif truth_start_time - now_time <= check_network_stop_time:
@@ -150,7 +151,7 @@ def run_task(task_list):
                 temp_time = now_time
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
@@ -176,7 +177,7 @@ def gift_main():
         return True
     except KeyboardInterrupt:
         print("强制退出")
-        sys.exit()
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False

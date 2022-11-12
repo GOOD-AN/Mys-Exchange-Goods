@@ -76,7 +76,7 @@ enable = true
 ntp_server = ntp.aliyun.com
 ```
 
-### 第三步、运行`main.py`
+### 第三步、运行`main.py`或直接运行已打包程序[在此下载](https://github.com/GOOD-AN/Mys-Exchange-Goods/releases/latest)
 
 `python main.py`
 
