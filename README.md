@@ -1,5 +1,5 @@
-# 米游社商品兑换
-<div align="left">
+<p align="center"><img alt="项目图标" src="./images/logo.png"></p>
+<div align="center">
   <a href="https://github.com/GOOD-AN/Mys-Exchange-Goods/releases/latest" target="_blank">
     <img alt="最新发行版" src="https://img.shields.io/github/v/release/GOOD-AN/Mys-Exchange-Goods?logo=python&style=for-the-badge">
   </a>
@@ -8,83 +8,19 @@
   <img alt="开源协议" src="https://img.shields.io/badge/License-mit-blue.svg?longCache=true&style=for-the-badge">
 </div>
 
-## 使用说明
+## 🖨️ 相关文档
+在使用前请务必阅读文档，若有疑问，请先查阅文档或者Issues里是否有相同的问题
 
-*可直接运行已打包程序[在此下载](https://github.com/GOOD-AN/Mys-Exchange-Goods/releases/latest), 按第二步配置文件后, 打开exe即可使用。
+* [使用说明](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/运行方法)
+* [配置说明](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/配置文件说明)
+* [更新日志](./docs/CHANGELOG.md)
+* [常见问题](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/FAQ)
+* [关于项目](./docs/ABOUT.md)
 
-以下步骤为希望源码运行的用户使用。
+## 💬 交流反馈
+请于[此页](https://blog.goodant.top/about/)下方的联系方式中交流 | **请优先使用QQ群**
 
-### 第一步、安装所需运行库
-
-`pip install -r requirements.txt`
-
-### 第二步、配置`config.ini`文件
-
-*以下未标明手动填写的都可在程序内处理
-
-**[user_info]**
-
-| 参数         | 说明                                   |
-|------------|--------------------------------------|
-| cookie     | 用户`cookie`数据                         |
-| uid        | 用户游戏内UID, 填写为需要兑换的游戏商品对应的UID, 暂只支持一个 |
-| address_id | 用户收货地址ID                             |
-
-**[exchange_info]**
-
-| 参数      | 说明                    |
-|---------|-----------------------|
-| good_id | 需要兑换的商品ID             |
-| time    | 兑换商品的开始时间, 需手动填写      |
-| thread  | 每个商品同时请求兑换的线程数, 需手动填写 |
-| retry   | 请求时重试次数, 需手动填写        |
-
-**[check_network]**
-
-| 参数            | 说明                         |
-|---------------|----------------------------|
-| enable        | 是否启用网络检查, 需手动填写            |
-| interval_time | 检查间隔, 单位 秒, 需手动填写          |
-| stop_time     | 距开始兑换多长时间停止检查, 单位 秒, 需手动填写 |
-
-**[ntp]**
-
-| 参数         | 说明              |
-|------------|-----------------|
-| enable     | 是否启用ntp, 需手动填写  |
-| ntp_server | ntp对时服务器, 需手动填写 |
-
-**[\*] 其余参数暂未使用, 可忽略**
-
-#### 示例
-
-```ini
-[user_info]
-cookie = account_id=...;cookie_token=...;ltuid=...;aliyungf_tc=...;login_ticket=...;stoken=...;
-uid = 123789456
-address_id = 1234
-
-[exchange_info]
-good_id = 20220513112546,20220513226423
-time = 2022-01-01 12:00:00
-thread = 3
-retry = 5
-
-[check_network]
-enable = true
-interval_time = 15
-stop_time = 30
-
-[ntp]
-enable = true
-ntp_server = ntp.aliyun.com
-```
-
-### 第三步、运行`main.py`
-
-`python main.py`
-
-## 致谢
+## ❤️ 致谢
 感谢 `Microsoft` 提供优秀的编辑器。
 
 <a href="https://code.visualstudio.com/" target="_blank">
@@ -97,6 +33,6 @@ ntp_server = ntp.aliyun.com
   <img alt="jetbrains" src="https://s3.bmp.ovh/imgs/2022/11/11/8f7309621f30a044.png" width="150"/>
 </a>
 
-## 其他
+## 🎺 声明
 
-本项目仅供学习使用，请勿用于非法用途！若使用中出现任何问题，本项目及其发起人与参与者不承担任何责任。
+本项目遵循MIT协议，仅供学习使用，请勿用于非法用途！若使用中出现任何问题，本项目及其发起人与参与者不承担任何责任。
