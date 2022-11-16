@@ -102,7 +102,7 @@ if __name__ == '__main__':
     try:
         start_info()
         init_config()
-        # check_update(MAIN_VERSION)
+        check_update(MAIN_VERSION)
         input("按回车键继续")
         start()
     except KeyboardInterrupt:
