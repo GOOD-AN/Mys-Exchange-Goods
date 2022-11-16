@@ -2,13 +2,26 @@
 运行主程序
 """
 
-from os import path, system
-from sys import exit, argv
+from os import system
+from sys import exit
+from time import localtime
+from getpass import getuser
 
-from tools import check_plat, check_update, load_config, check_cookie, update_cookie
-from get_info import info_main
-from exchange_gift import gift_main
+from tools import check_update, check_cookie, update_cookie, init_config
+from plugin import info_main, gift_main, config_main
 import tools.global_var as gl
+
+MAIN_VERSION = '2.0.3'
+MESSAGE = f"""\
+===========================================
+|        Mys Exchange Goods v{MAIN_VERSION}        |
+===========================================
+Description: 用于自动兑换米游社礼物
+Author     : GOOD-AN
+Blog       : https://blog.goodant.top/
+LICENSE    : MIT
+===========================================
+"""
 
 
 def start():
@@ -21,10 +34,12 @@ def start():
             update_cookie()
         while True:
             system(gl.CLEAR_TYPE)
-            print("""选择功能:
+            print("""主菜单
+选择功能:
 1. 获取信息
 2. 兑换商品
-3. 检查更新
+3. 其他设置
+4. 检查更新
 0. 退出""")
             select_function = input("请输入选择功能的序号: ")
             system(gl.CLEAR_TYPE)
@@ -33,7 +48,9 @@ def start():
             elif select_function == "2":
                 gift_main()
             elif select_function == "3":
-                check_update()
+                config_main()
+            elif select_function == "4":
+                check_update(MAIN_VERSION)
                 input("按回车键继续")
             elif select_function == "0":
                 exit()
@@ -48,14 +65,45 @@ def start():
         exit()
 
 
+def start_info():
+    """
+    开始输出信息
+    """
+    try:
+        now_hour = localtime().tm_hour
+        user_name = getuser()
+        if now_hour < 6:
+            print(f"{user_name}，夜色正浓，烟波浩渺，早起的你在做什么呢？")
+        elif now_hour < 9:
+            print(f"{user_name}，早上好，今天也要加油哦~")
+        elif now_hour < 12:
+            print(f"{user_name}，上午好，记得及时补充水分哦~")
+        elif now_hour < 14:
+            print(f"{user_name}，中午好，别忘记吃饭哦~身体是革命的本钱！")
+        elif now_hour < 17:
+            print(f"{user_name}，下午好，久坐伤身，记得起身活动一下哦~")
+        elif now_hour < 19:
+            print(f"{user_name}，傍晚好，炊烟四起，晚霞灿然，辛苦了。")
+        elif now_hour < 22:
+            print(f"{user_name}，晚上好，今天过的怎么样呢？明天也要加油哦~")
+        else:
+            print(f"{user_name}，夜深了，花睡了，早些休息哦~")
+        print(MESSAGE)
+    except KeyboardInterrupt:
+        print("强制退出")
+        exit()
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        input("按回车键继续")
+        return False
+
+
 if __name__ == '__main__':
     try:
-        gl.CONFIG_PATH = path.join(path.dirname(argv[0]), "config")
-        gl.INI_CONFIG = load_config()
-        gl.CLEAR_TYPE = check_plat()
-        check_update()
+        start_info()
+        init_config()
+        # check_update(MAIN_VERSION)
         input("按回车键继续")
-        gl.MI_COOKIE = gl.INI_CONFIG.get('user_info', 'cookie').strip(" ")
         start()
     except KeyboardInterrupt:
         print("强制退出")

@@ -1,6 +1,6 @@
 {
-    "least_version": "2.0.0",
-    "last_version": "2.0.0",
+    "least_version": "2.0.3",
+    "last_version": "2.0.3",
     "update_log":[
         {
             "version": "1.0.0",
@@ -36,6 +36,11 @@
             "version": "2.0.2",
             "update_time": "2022-11-12",
             "update_content": ["修复部分情况下配置文件读取错误"]
+        },
+        {
+            "version": "2.0.3",
+            "update_time": "2022-11-16",
+            "update_content": ["1.修改部分目录结构", "2.添加其他配置设置", "3.添加欢迎语"]
         }
     ]
 }
