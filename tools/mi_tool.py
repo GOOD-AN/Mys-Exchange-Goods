@@ -47,9 +47,10 @@ def get_new_ds(_b, _q):
         return f"{t_param},{r_param},{c_param}"
     except KeyboardInterrupt:
         print("强制退出")
+        input("按回车键继续")
         exit()
     except Exception as err:
-        print(err)
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
 
 
@@ -77,6 +78,9 @@ def update_cookie():
     需要stoken
     """
     try:
+        if get_cookie_str("stoken") == "":
+            print("缺少stoken")
+            return False
         update_cookie_url = gl.MI_URL + "/auth/api/getCookieAccountInfoBySToken"
         update_cookie_url_params = {
             "uid": get_cookie_str("account_id"),
@@ -89,11 +93,14 @@ def update_cookie():
             print(f"获取出错，错误原因为: {update_cookie_url_req['message']}")
         new_mi_cookie = sub(get_cookie_str("cookie_token"), update_cookie_url_req['data']['cookie_token'], gl.MI_COOKIE)
         write_config_file("user_info", "cookie", new_mi_cookie)
-        input("cookie更新成功, 按回车键继续")
+        print("cookie更新成功")
         return True
+    except KeyboardInterrupt:
+        print("强制退出")
+        input("按回车键继续")
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
         return False
 
 
@@ -112,17 +119,14 @@ def get_point():
         point_req = get(point_url, headers=point_headers)
         if point_req.status_code != 200:
             print(f"获取米游币数量失败, 返回状态码为{point_req.status_code}")
-            input("按回车键继续")
             return False
         point_req = point_req.json()
         if point_req['retcode'] != 0:
             print(f"获取米游币数量失败, 原因为{point_req['message']}")
-            input("按回车键继续")
             return False
         return point_req['data']['total_points']
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
         return False
 
 
@@ -144,9 +148,12 @@ def check_cookie() -> bool:
             print("Cookie已过期")
             return False
         return True
+    except KeyboardInterrupt:
+        print("强制退出")
+        input("按回车键继续")
+        exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
         return False
 
 
@@ -174,10 +181,10 @@ def get_gift_detail(goods_id: int, get_type=''):
         return int(gift_detail['sale_start_time'])
     except KeyboardInterrupt:
         print("强制退出")
+        input("按回车键继续")
         exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
         return False
 
 
@@ -201,6 +208,7 @@ def get_action_ticket():
         return action_ticket_req.json()['data']['ticket']
     except KeyboardInterrupt:
         print("强制退出")
+        input("按回车键继续")
         exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -246,6 +254,7 @@ def check_game_roles(game_biz='', uid=0, get_type=''):
         return False
     except KeyboardInterrupt:
         print("强制退出")
+        input("按回车键继续")
         exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
