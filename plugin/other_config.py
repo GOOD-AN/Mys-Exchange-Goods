@@ -52,8 +52,11 @@ def set_exchange_time():
             system(gl.CLEAR_TYPE)
             config_time = gl.INI_CONFIG.get('exchange_info', 'time')
             if config_time:
-                now_time = strftime("%Y年%m月%d日 %H:%M:%S", strptime(config_time, "%Y-%m-%d %H:%M:%S"))
-                print(f"当前商品兑换时间为: {now_time}")
+                try:
+                    now_time = strftime("%Y年%m月%d日 %H:%M:%S", strptime(config_time, "%Y-%m-%d %H:%M:%S"))
+                    print(f"当前商品兑换时间为: {now_time}")
+                except ValueError:
+                    print(f"当前商品兑换时间为: {config_time}")
                 choice = input(f"是否修改(默认为Y)(Y/N): ")
                 if choice in ('n', 'N'):
                     return True

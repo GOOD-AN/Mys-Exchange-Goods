@@ -11,7 +11,7 @@ from tools import check_update, check_cookie, update_cookie, init_config
 from plugin import info_main, gift_main, config_main
 import tools.global_var as gl
 
-MAIN_VERSION = '2.0.3'
+MAIN_VERSION = '2.0.4'
 MESSAGE = f"""\
 ===========================================
 |        Mys Exchange Goods v{MAIN_VERSION}        |
