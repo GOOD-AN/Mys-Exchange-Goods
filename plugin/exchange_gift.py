@@ -46,20 +46,20 @@ def post_exchange_gift(gift_id, biz):
                 break
             sleep(1)
         if exchange_gift_req.status_code != 200:
-            print("兑换请求失败")
+            gl.standard_log.error(f"兑换请求失败, 返回状态码为{str(exchange_gift_req.status_code)}")
             return False
         exchange_gift_req_json = exchange_gift_req.json()
         if exchange_gift_req_json['data'] is None:
-            print(f"商品{str(gift_id)}兑换失败, 原因是{exchange_gift_req_json['message']}")
+            gl.standard_log.info(f"商品{str(gift_id)}兑换失败, 原因是{exchange_gift_req_json['message']}")
             return False
-        print(f"商品{str(gift_id)}兑换成功, 订单号{exchange_gift_req_json['data']['order_sn']}")
+        gl.standard_log.info(f"商品{str(gift_id)}兑换成功, 订单号{exchange_gift_req_json['data']['order_sn']}")
         print("请手动前往米游社APP查看订单状态")
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -72,12 +72,12 @@ def init_task():
         task_thread = gl.INI_CONFIG.getint('exchange_info', 'thread')
         task_list = []
         if not check_cookie():
-            print("Cookie失效, 尝试更新")
+            gl.standard_log.info("Cookie失效, 尝试更新")
             update_cookie()
         for good_id in gift_list:
             gift_biz, gift_type = get_gift_detail(good_id, 'biz')
             if not gift_biz:
-                print("获取game_biz失败")
+                gl.standard_log.warning("获取game_biz失败")
                 continue
             if gift_biz != 'bbs_cn':
                 if not check_game_roles(gift_biz, gl.INI_CONFIG.get('user_info', 'game_uid'), 'check'):
@@ -88,10 +88,10 @@ def init_task():
                            args=(good_id, gift_biz)))
         return task_list
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -101,7 +101,11 @@ def run_task(task_list):
     """
     try:
         start_timestamp = gl.INI_CONFIG.get('exchange_info', 'time')
-        start_time = mktime(strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
+        try:
+            start_time = mktime(strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
+        except ValueError:
+            gl.standard_log.warning("时间格式错误, 请重新设置")
+            return False
         ntp_enable = gl.INI_CONFIG.getboolean('ntp', 'enable')
         ntp_server = gl.INI_CONFIG.get('ntp', 'ntp_server')
         temp_time = 0
@@ -150,10 +154,10 @@ def run_task(task_list):
                 )
                 temp_time = now_time
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -163,23 +167,23 @@ def gift_main():
     """
     try:
         if not gl.MI_COOKIE:
-            print("请填写cookie")
+            gl.standard_log.warning("请填写cookie")
             input("按回车键返回")
             return True
-        print("开始初始化任务")
+        gl.standard_log.info("开始初始化任务")
         task_list = init_task()
         if not task_list:
-            print("没有任务, 即将返回主菜单")
+            gl.standard_log.info("没有任务, 即将返回主菜单")
             input("按回车键返回")
             return True
-        print("开始运行任务")
+        gl.standard_log.info("开始运行任务")
         run_task(task_list)
-        print("程序运行完毕, 即将返回主菜单")
+        gl.standard_log.info("程序运行完毕, 即将返回主菜单")
         input("按回车键返回")
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False

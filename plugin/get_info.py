@@ -22,7 +22,7 @@ def get_app_cookie():
     """
     try:
         login_url = 'https://user.mihoyo.com/#/login/captcha'
-        print(f"请在浏览器打开{login_url}, 输入手机号后获取验证码，但不要登录，然后在下方按提示输入数据。")
+        print(f"请在浏览器打开{login_url}, 输入手机号后获取验证码, 但不要登录, 然后在下方按提示输入数据。")
         copy(login_url)
         print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         mobile = input("请输入手机号: ")
@@ -37,14 +37,14 @@ def get_app_cookie():
         login_user_req_one = post(login_user_url_one, login_user_form_data_one)
         login_user_cookie_one = utils.dict_from_cookiejar(login_user_req_one.cookies)
         if "login_ticket" not in login_user_cookie_one:
-            print("缺少'login_ticket'字段，请重新获取")
+            gl.standard_log.warning("缺少'login_ticket'字段, 请重新获取")
             return False
         if "login_uid" not in login_user_cookie_one:
             mys_uid = login_user_req_one.json()['data']['account_info']['account_id']
         else:
             mys_uid = login_user_cookie_one['login_uid']
         if mys_uid is None:
-            print("缺少'uid'字段，请重新获取")
+            gl.standard_log.warning("缺少'uid'字段, 请重新获取")
             return False
 
         # 获取 stoken
@@ -59,11 +59,11 @@ def get_app_cookie():
         if user_stoken_req.status_code == 200:
             user_stoken_data = user_stoken_req.json()["data"]["list"][0]["token"]
         if user_stoken_data is None:
-            print("stoken获取失败，请重新获取")
+            gl.standard_log.warning("stoken获取失败, 请重新获取")
             return False
 
         # 获取第二个 cookie
-        print("重新在此页面(刷新或重新打开)获取验证码，依旧不要登录，在下方输入数据。")
+        print("重新在此页面(刷新或重新打开)获取验证码, 依旧不要登录, 在下方输入数据。")
         copy(login_url)
         print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         mobile_captcha = input("请输入第二次验证码: ")
@@ -78,7 +78,7 @@ def get_app_cookie():
         login_user_req_two = post(login_user_url_two, json=login_user_form_data_two)
         login_user_cookie_two = utils.dict_from_cookiejar(login_user_req_two.cookies)
         if "cookie_token" not in login_user_cookie_two:
-            print("缺少'cookie_token'字段，请重新获取")
+            gl.standard_log.warning("缺少'cookie_token'字段, 请重新获取")
             return False
         uer_cookie = ""
         for key, value in login_user_cookie_two.items():
@@ -96,13 +96,12 @@ def get_app_cookie():
             write_config_file('user_info', 'cookie', uer_cookie)
         else:
             write_config_file('user_info', 'cookie', uer_cookie)
-        print("cookie 写入成功")
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -113,7 +112,7 @@ def get_address():
     """
     try:
         if gl.MI_COOKIE == "":
-            print("请先获取Cookie")
+            gl.standard_log.warning("请先获取Cookie")
             return False
         address_url = gl.MI_URL + '/account/address/list'
         address_headers = {
@@ -121,11 +120,11 @@ def get_address():
         }
         address_list_req = get(address_url, headers=address_headers)
         if address_list_req.status_code != 200:
-            print("请求出错，请稍后重试或联系项目负责人")
+            gl.standard_log.error("请求出错, 请稍后重试或联系项目负责人, 状态码为: " + str(address_list_req.status_code))
             return False
         address_list_req = address_list_req.json()
         if address_list_req['data'] is None:
-            print(f"获取出错，错误原因为: {address_list_req['message']}")
+            gl.standard_log.error(f"获取出错, 错误原因为: {address_list_req['message']}")
             return False
         address_list = address_list_req["data"]["list"]
         address_id_list = []
@@ -158,14 +157,13 @@ def get_address():
                 print("取消写入")
                 return
         write_config_file('user_info', 'address_id', address_id_list[int(address_id_in) - 1])
-        print("地址写入成功")
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -175,7 +173,7 @@ def get_game_uid():
     """
     try:
         if gl.MI_COOKIE == "":
-            print("请先获取Cookie")
+            gl.standard_log.warning("请先获取Cookie")
             return False
         game_info_list = check_game_roles()
         if not game_info_list:
@@ -209,14 +207,13 @@ def get_game_uid():
                 print("取消写入")
                 return
         write_config_file('user_info', 'game_uid', game_uid_list[int(game_uid_in) - 1])
-        print("游戏UID写入成功")
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -248,7 +245,7 @@ def get_gift_list():
             if game_choice == "0":
                 return None
             if game_choice not in game_type_dict:
-                input("输入有误，请重新输入(回车以返回)")
+                input("输入有误, 请重新输入(回车以返回)")
                 continue
             gift_list_url = gl.MI_URL + '/mall/v1/web/goods/list'
             gift_list_params = {
@@ -271,7 +268,7 @@ def get_gift_list():
                                     params=gift_list_params,
                                     headers=gift_list_headers)
                 if gift_list_req.status_code != 200:
-                    print("获取礼物列表失败，请重试")
+                    gl.standard_log.error(f"获取礼物列表失败, 请重试, 返回状态码为{str(gift_list_req.status_code)}")
                     return False
                 gift_list = gift_list_req.json()["data"]
                 for gift_data in gift_list["list"]:
@@ -310,7 +307,7 @@ def get_gift_list():
                 input("没有可兑换的商品(回车以返回)")
                 continue
             while True:
-                gift_id_in = set(input("请输入需要抢购的商品序号，以空格分开，将忽略输入错误的序号(请注意现有米游币是否足够): ").split(' '))
+                gift_id_in = set(input("请输入需要抢购的商品序号, 以空格分开, 将忽略输入错误的序号(请注意现有米游币是否足够): ").split(' '))
                 if '' not in gift_id_in:
                     gift_id_write = ''
                     gift_point = 0
@@ -320,13 +317,13 @@ def get_gift_list():
                             gift_point += gift_point_list[int(gift_id) - 1]
                     user_point = get_point()
                     if user_point and user_point < gift_point:
-                        print(f"当前米游币不足，当前米游币: {user_point}，所需米游币: {gift_point}")
+                        print(f"当前米游币不足, 当前米游币: {user_point}, 所需米游币: {gift_point}")
                         choice = input("是否继续选择商品, 取消将返回重新选择(默认为Y)(Y/N): ")
                         if choice in ('n', 'N'):
                             continue
                     if gl.INI_CONFIG.get('exchange_info', 'good_id'):
                         while True:
-                            print("检测到已存在商品id，需要的操作是\n1.追加\n2.替换\n3.删除\n4.取消")
+                            print("检测到已存在商品id, 需要的操作是\n1.追加\n2.替换\n3.删除\n4.取消")
                             choice = input("请输入选项: ")
                             if choice == '1':
                                 gift_id_write += gl.INI_CONFIG.get('exchange_info', 'good_id')
@@ -341,7 +338,7 @@ def get_gift_list():
                             elif choice == '4':
                                 break
                             else:
-                                input("输入有误，请重新输入(回车以返回)")
+                                input("输入有误, 请重新输入(回车以返回)")
                                 continue
                             break
                     else:
@@ -355,11 +352,11 @@ def get_gift_list():
                         break
             return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -399,12 +396,12 @@ def info_main():
             elif select_function == "0":
                 return
             else:
-                input("输入有误，请重新输入(回车以返回)")
+                input("输入有误, 请重新输入(回车以返回)")
             input("按回车键继续")
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False

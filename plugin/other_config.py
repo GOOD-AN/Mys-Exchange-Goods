@@ -35,10 +35,10 @@ def set_time_s(sec, key, message):
             if choice in ('n', 'N'):
                 return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -75,10 +75,10 @@ def set_exchange_time():
                     print("输入的时间格式有误，请重新输入")
                     continue
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -110,10 +110,10 @@ def config_goods():
                 print("输入有误，请重新输入(回车以返回)")
             input("按回车键继续")
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -143,10 +143,10 @@ def set_ntp_server():
             write_config_file('ntp', 'ntp_server', input_server)
             return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -166,10 +166,10 @@ def set_enable(fun, message):
         write_config_file(fun, 'enable', str(not config_enable))
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -207,10 +207,10 @@ def config_network():
                 print("输入有误，请重新输入(回车以返回)")
             input("按回车键继续")
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -242,9 +242,9 @@ def config_main():
             else:
                 input("输入有误，请重新输入(回车以返回)")
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False

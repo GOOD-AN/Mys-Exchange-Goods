@@ -2,7 +2,7 @@
 通用函数
 """
 from hashlib import md5
-from os import path
+from os import path, mkdir
 from platform import system
 from configparser import ConfigParser
 from re import compile
@@ -10,8 +10,11 @@ from sys import argv, exit
 from time import sleep, time
 from ntplib import NTPClient
 from requests import get, exceptions
+from shutil import copyfile
+import logging.config
 
 import tools.global_var as gl
+from config import logging_config
 
 CHECK_UPDATE_URL_LIST = [
     'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
@@ -29,11 +32,11 @@ def check_plat():
             return "cls"
         return "clear"
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         exit()
 
@@ -45,18 +48,21 @@ def load_config():
     config = ConfigParser()
     try:
         config_path = path.join(gl.CONFIG_PATH, 'config.ini')
-        if not path.exists(config_path):
-            print("配置文件不存在, 请检查")
+        default_config_path = path.join(gl.CONFIG_PATH, 'default_config.ini')
+        if not path.exists(config_path) and not path.exists(default_config_path):
+            gl.standard_log.critical("配置文件不存在, 请检查")
             input("按回车键继续")
             exit()
+        if not path.exists(config_path) and path.exists(default_config_path):
+            copyfile(default_config_path, config_path)
         config.read_file(open(config_path, "r", encoding="utf-8"))
         return config
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         exit()
 
@@ -72,11 +78,11 @@ def get_cookie_str(target):
             return result_str.group(1)
         return ''
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
 
 
@@ -94,11 +100,11 @@ def write_config_file(section, key, value):
         if key == 'cookie':
             gl.MI_COOKIE = value
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
 
 
@@ -114,11 +120,11 @@ def compare_version(old_version, new_version):
                 return -1
         return 0
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         exit()
 
@@ -162,24 +168,24 @@ def check_update(main_version):
                             print(content.rjust(20))
                         print("=" * 50)
                 if compare_version(remote_least_version, local_version) == 1:
-                    print("版本过低, 程序将停止运行")
+                    gl.standard_log.critical("版本过低, 程序将停止运行")
                     print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
                     sleep(3)
                     exit()
                 print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
                 return True
         else:
-            print(f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
+            gl.standard_log.warning(f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
             print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
             return True
         print("当前已是最新版本")
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
 
 
@@ -192,7 +198,7 @@ def get_time(ntp_enable, ntp_server):
             return time()
         return NTPClient().request(ntp_server).tx_time
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
@@ -209,11 +215,11 @@ def md5_encode(text):
         md5_str.update(text.encode('utf-8'))
         return md5_str.hexdigest()
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         exit()
 
@@ -223,15 +229,22 @@ def init_config():
     初始化配置文件
     """
     try:
+        basic_path = path.join(path.dirname(argv[0]), 'log')
+        log_path = path.join(basic_path, 'meg_all.log')
+        if not path.exists(basic_path):
+            mkdir(log_path)
+        logging_config.log_config['handlers']['standard_file']['filename'] = log_path
+        logging.config.dictConfig(logging_config.log_config)
+        gl.standard_log = logging.getLogger('standard_logger')
         gl.CONFIG_PATH = path.join(path.dirname(argv[0]), "config")
         gl.INI_CONFIG = load_config()
         gl.CLEAR_TYPE = check_plat()
         gl.MI_COOKIE = gl.INI_CONFIG.get('user_info', 'cookie').strip(" ")
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         exit()

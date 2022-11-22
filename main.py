@@ -30,7 +30,7 @@ def start():
     """
     try:
         if gl.MI_COOKIE and not check_cookie():
-            print("Cookie失效, 尝试更新")
+            gl.standard_log.info("Cookie失效, 尝试更新")
             update_cookie()
         while True:
             system(gl.CLEAR_TYPE)
@@ -57,10 +57,10 @@ def start():
             else:
                 input("输入有误，请重新输入(回车以返回)")
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         exit()
 
@@ -90,10 +90,10 @@ def start_info():
             print(f"{user_name}，夜深了，花睡了，早些休息哦~")
         print(MESSAGE)
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
@@ -106,9 +106,9 @@ if __name__ == '__main__':
         input("按回车键继续")
         start()
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         exit()
     except Exception as main_err:
-        print(f"运行出错, 错误为: {main_err}, 错误行数为: {main_err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {main_err}, 错误行数为: {main_err.__traceback__.tb_lineno}")
         input("按回车键继续")
         exit()
