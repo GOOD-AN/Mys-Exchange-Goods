@@ -1,12 +1,12 @@
 """
 米游社相关
 """
-from random import randint, sample
-from re import sub
-from string import ascii_lowercase, digits
-from sys import exit
-from time import time
-from requests import get
+import random
+import re
+import string
+import sys
+import time
+import requests
 
 from tools import md5_encode, get_cookie_str, write_config_file
 import tools.global_var as gl
@@ -39,18 +39,18 @@ def get_new_ds(_b, _q):
     保留此函数以备后用
     """
     try:
-        t_param = str(int(time()))
-        r_param = str(randint(100001, 200000))
+        t_param = str(int(time.time()))
+        r_param = str(random.randint(100001, 200000))
         b_param = '传入参数, 待查明'
         q_param = '传入参数, 待查明'
         c_param = md5_encode(f"salt={MYS_SALT_TWO}&t={t_param}&r={r_param}&b={b_param}&q={q_param}")
         return f"{t_param},{r_param},{c_param}"
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
-        exit()
+        sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
 
 
@@ -66,8 +66,8 @@ def get_old_ds(web: bool):
         old_salt = MYS_SALT_WEB
     else:
         old_salt = MYS_SALT
-    t_param = str(int(time()))
-    r_param = ''.join(sample(ascii_lowercase + digits, 6))
+    t_param = str(int(time.time()))
+    r_param = ''.join(random.sample(string.ascii_lowercase + string.digits, 6))
     c_param = md5_encode(f'salt={old_salt}&t={t_param}&r={r_param}')
     return f"{t_param},{r_param},{c_param}"
 
@@ -79,7 +79,7 @@ def update_cookie():
     """
     try:
         if get_cookie_str("stoken") == "":
-            print("缺少stoken")
+            gl.standard_log.warning("缺少stoken")
             return False
         update_cookie_url = gl.MI_URL + "/auth/api/getCookieAccountInfoBySToken"
         update_cookie_url_params = {
@@ -87,20 +87,20 @@ def update_cookie():
             "stoken": get_cookie_str("stoken")
         }
         print("开始更新cookie")
-        update_cookie_url_req = get(update_cookie_url, params=update_cookie_url_params)
+        update_cookie_url_req = requests.get(update_cookie_url, params=update_cookie_url_params)
         update_cookie_url_req = update_cookie_url_req.json()
         if update_cookie_url_req['data'] is None:
-            print(f"获取出错，错误原因为: {update_cookie_url_req['message']}")
-        new_mi_cookie = sub(get_cookie_str("cookie_token"), update_cookie_url_req['data']['cookie_token'], gl.MI_COOKIE)
+            gl.standard_log.error(f"获取出错，错误原因为: {update_cookie_url_req['message']}")
+        new_mi_cookie = re.sub(get_cookie_str("cookie_token"), update_cookie_url_req['data']['cookie_token'], gl.MI_COOKIE)
         write_config_file("user_info", "cookie", new_mi_cookie)
         print("cookie更新成功")
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
-        exit()
+        sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -116,17 +116,17 @@ def get_point():
         point_headers = {
             'Cookie': gl.MI_COOKIE,
         }
-        point_req = get(point_url, headers=point_headers)
+        point_req = requests.get(point_url, headers=point_headers)
         if point_req.status_code != 200:
-            print(f"获取米游币数量失败, 返回状态码为{point_req.status_code}")
+            gl.standard_log.error(f"获取米游币数量失败, 返回状态码为{str(point_req.status_code)}")
             return False
         point_req = point_req.json()
         if point_req['retcode'] != 0:
-            print(f"获取米游币数量失败, 原因为{point_req['message']}")
+            gl.standard_log.error(f"获取米游币数量失败, 原因为{point_req['message']}")
             return False
         return point_req['data']['total_points']
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -139,9 +139,9 @@ def check_cookie() -> bool:
         check_cookie_hearders = {
             'Cookie': gl.MI_COOKIE,
         }
-        check_cookie_req = get(check_cookie_url, headers=check_cookie_hearders)
+        check_cookie_req = requests.get(check_cookie_url, headers=check_cookie_hearders)
         if check_cookie_req.status_code != 200:
-            print(f"检查Cookie失败, 返回状态码为{check_cookie_req.status_code}")
+            gl.standard_log.error(f"检查Cookie失败, 返回状态码为{str(check_cookie_req.status_code)}")
             return False
         check_cookie_req = check_cookie_req.json()
         if check_cookie_req['retcode'] != 0:
@@ -149,11 +149,11 @@ def check_cookie() -> bool:
             return False
         return True
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
-        exit()
+        sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -168,7 +168,7 @@ def get_gift_detail(goods_id: int, get_type=''):
             "point_sn": "myb",
             "goods_id": goods_id,
         }
-        gift_detail_req = get(gift_detail_url, params=gift_detail_params)
+        gift_detail_req = requests.get(gift_detail_url, params=gift_detail_params)
         if gift_detail_req.status_code != 200:
             return False
         gift_detail = gift_detail_req.json()["data"]
@@ -180,11 +180,11 @@ def get_gift_detail(goods_id: int, get_type=''):
             return int(gift_detail['next_time'])
         return int(gift_detail['sale_start_time'])
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
-        exit()
+        sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -198,20 +198,20 @@ def get_action_ticket():
         uid = get_cookie_str('account_id') or get_cookie_str('ltuid') or get_cookie_str('stuid')
         action_ticket_url = gl.MI_URL + "/auth/api/getActionTicketBySToken"
         action_ticket_params = {"action_type": "game_role", "stoken": stoken, "uid": uid}
-        action_ticket_req = get(action_ticket_url, params=action_ticket_params)
+        action_ticket_req = requests.get(action_ticket_url, params=action_ticket_params)
         if action_ticket_req.status_code != 200:
-            print("ticket请求失败，请检查cookie")
+            gl.standard_log.error(f"ticket请求失败, 请检查cookie, 返回状态码为{str(action_ticket_req.status_code)}")
             return False
         if action_ticket_req.json()['data'] is None:
-            print(f"ticket获取失败, 原因为{action_ticket_req.json()['message']}")
+            gl.standard_log.error(f"ticket获取失败, 原因为{action_ticket_req.json()['message']}")
             return False
         return action_ticket_req.json()['data']['ticket']
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
-        exit()
+        sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -231,15 +231,15 @@ def check_game_roles(game_biz='', uid=0, get_type=''):
         if get_type == 'check':
             game_roles_params['uid'] = uid
         game_roles_headers = {"cookie": gl.MI_COOKIE}
-        game_roles_req = get(game_roles_url,
-                             headers=game_roles_headers,
-                             params=game_roles_params)
+        game_roles_req = requests.get(game_roles_url,
+                                      headers=game_roles_headers,
+                                      params=game_roles_params)
         if game_roles_req.status_code != 200:
-            print("检查角色请求失败，请检查传入参数")
+            gl.standard_log.error(f"检查角色请求失败, 请检查传入参数, 返回状态码为{str(game_roles_req.status_code)}")
             return False
         game_roles_req = game_roles_req.json()
         if game_roles_req['retcode'] != 0:
-            print(f"检查角色失败, 原因为{game_roles_req['message']}")
+            gl.standard_log.error(f"检查角色失败, 原因为{game_roles_req['message']}")
             return False
         game_roles_list = game_roles_req['data']['list']
         if not game_roles_list:
@@ -253,9 +253,9 @@ def check_game_roles(game_biz='', uid=0, get_type=''):
         print('没有绑定该游戏角色')
         return False
     except KeyboardInterrupt:
-        print("强制退出")
+        gl.standard_log.warning("用户强制退出")
         input("按回车键继续")
-        exit()
+        sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
