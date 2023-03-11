@@ -1,13 +1,12 @@
 """
 米游社商品兑换
 """
-from time import sleep, mktime, strftime, localtime, strptime
-from os import system
-from sys import exit
+import time
+import os
+import sys
 from threading import Thread
-
-from ping3 import ping
-from requests import post
+import ping3
+import requests
 
 import tools.global_var as gl
 from tools import get_time, get_cookie_str, check_cookie, update_cookie, get_gift_detail, check_game_roles
@@ -39,12 +38,12 @@ def post_exchange_gift(gift_id, biz):
             exchange_gift_json['uid'] = gl.INI_CONFIG.getint('user_info', 'game_uid')
         exchange_gift_req = ''
         for _ in range(gl.INI_CONFIG.getint('exchange_info', 'retry')):
-            exchange_gift_req = post(exchange_gift_url,
+            exchange_gift_req = requests.post(exchange_gift_url,
                                      headers=exchange_gift_headers,
                                      json=exchange_gift_json)
             if exchange_gift_req.status_code != 429:
                 break
-            sleep(1)
+            time.sleep(1)
         if exchange_gift_req.status_code != 200:
             gl.standard_log.error(f"兑换请求失败, 返回状态码为{str(exchange_gift_req.status_code)}")
             return False
@@ -57,7 +56,7 @@ def post_exchange_gift(gift_id, biz):
         return True
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
@@ -89,7 +88,7 @@ def init_task():
         return task_list
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
@@ -102,7 +101,7 @@ def run_task(task_list):
     try:
         start_timestamp = gl.INI_CONFIG.get('exchange_info', 'time')
         try:
-            start_time = mktime(strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
+            start_time = time.mktime(time.strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
         except ValueError:
             gl.standard_log.warning("时间格式错误, 请重新设置")
             return False
@@ -118,7 +117,7 @@ def run_task(task_list):
         while True:
             now_time = get_time(ntp_enable, ntp_server)
             if now_time >= truth_start_time:
-                system(gl.CLEAR_TYPE)
+                os.system(gl.CLEAR_TYPE)
                 print("开始执行兑换任务")
                 for task in task_list:
                     task.start()
@@ -127,13 +126,13 @@ def run_task(task_list):
                 print("兑换任务执行完毕")
                 return
             elif now_time != temp_time:
-                system(gl.CLEAR_TYPE)
+                os.system(gl.CLEAR_TYPE)
                 if not check_network_enable:
                     print("网络检查未开启")
                 elif truth_start_time - now_time <= check_network_stop_time:
                     print("网络检查已停止")
                 elif now_time - check_last_time >= check_network_interval_time:
-                    network_delay = ping(CHECK_URL, unit='ms')
+                    network_delay = ping3.ping(CHECK_URL, unit='ms')
                     if not network_delay or network_delay is None:
                         print("本次网络检查异常")
                     else:
@@ -147,7 +146,7 @@ def run_task(task_list):
                         truth_start_time = start_time - delay_time
                     else:
                         truth_start_time = start_time
-                print(f"当前时间 {strftime('%Y-%m-%d %H:%M:%S', localtime(now_time))}")
+                print(f"当前时间 {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now_time))}")
                 time_t = truth_start_time - now_time
                 print(
                     f"距离兑换开始还有 {int(time_t / 3600)} 小时 {int(time_t % 3600 / 60)} 分钟 {int(time_t % 60)} 秒"
@@ -155,7 +154,7 @@ def run_task(task_list):
                 temp_time = now_time
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
@@ -183,7 +182,7 @@ def gift_main():
         return True
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False

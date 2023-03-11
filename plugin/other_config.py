@@ -1,10 +1,10 @@
 """
 其他设置
 """
-from time import strptime, strftime
-from os import system
-from sys import exit
-from ping3 import ping
+import time
+import os
+import sys
+import ping3
 
 import tools.global_var as gl
 from tools import write_config_file
@@ -36,7 +36,7 @@ def set_time_s(sec, key, message):
                 return True
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -49,11 +49,11 @@ def set_exchange_time():
     """
     try:
         while True:
-            system(gl.CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             config_time = gl.INI_CONFIG.get('exchange_info', 'time')
             if config_time:
                 try:
-                    now_time = strftime("%Y年%m月%d日 %H:%M:%S", strptime(config_time, "%Y-%m-%d %H:%M:%S"))
+                    now_time = time.strftime("%Y年%m月%d日 %H:%M:%S", time.strptime(config_time, "%Y-%m-%d %H:%M:%S"))
                     print(f"当前商品兑换时间为: {now_time}")
                 except ValueError:
                     print(f"当前商品兑换时间为: {config_time}")
@@ -68,7 +68,7 @@ def set_exchange_time():
                         return True
                     continue
                 try:
-                    strptime(input_time, "%Y-%m-%d %H:%M:%S")
+                    time.strptime(input_time, "%Y-%m-%d %H:%M:%S")
                     write_config_file('exchange_info', 'time', input_time)
                     return True
                 except ValueError:
@@ -76,7 +76,7 @@ def set_exchange_time():
                     continue
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -89,7 +89,7 @@ def config_goods():
     """
     try:
         while True:
-            system(gl.CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             print("""商品兑换相关设置菜单
 选择功能:
 1. 设置商品兑换时间
@@ -97,7 +97,7 @@ def config_goods():
 3. 设置单商品兑换重试次数
 0. 返回上一级菜单""")
             select_function = input("请输入选择功能的序号: ")
-            system(gl.CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             if select_function == "1":
                 set_exchange_time()
             elif select_function == "2":
@@ -111,7 +111,7 @@ def config_goods():
             input("按回车键继续")
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -136,7 +136,7 @@ def set_ntp_server():
                 if choice in ('n', 'N'):
                     return True
                 continue
-            if not ping(input_server, timeout=3):
+            if not ping3.ping(input_server, timeout=3):
                 choice = input(f"输入的NTP服务器地址3秒内无法ping通，是否写入，否则重新输入(默认为Y)(Y/N): ")
                 if choice in ('n', 'N'):
                     continue
@@ -144,7 +144,7 @@ def set_ntp_server():
             return True
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -167,7 +167,7 @@ def set_enable(fun, message):
         return True
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -180,7 +180,7 @@ def config_network():
     """
     try:
         while True:
-            system(gl.CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             print("""网络检查相关设置菜单
 选择功能:
 1. 设置是否启用网络检查
@@ -190,7 +190,7 @@ def config_network():
 5. 设置NTP服务器地址
 0. 返回上一级菜单""")
             select_function = input("请输入选择功能的序号: ")
-            system(gl.CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             if select_function == "1":
                 set_enable('check_network', '网络检查')
             elif select_function == "2":
@@ -208,7 +208,7 @@ def config_network():
             input("按回车键继续")
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
@@ -221,7 +221,7 @@ def config_main():
     """
     try:
         while True:
-            system(gl.CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             print("""其他设置菜单
 选择功能:
 1. 商品兑换相关设置
@@ -229,7 +229,7 @@ def config_main():
 3. 通知相关设置
 0. 返回主菜单""")
             select_function = input("请输入选择功能的序号: ")
-            system(gl.CLEAR_TYPE)
+            os.system(gl.CLEAR_TYPE)
             if select_function == "1":
                 config_goods()
             elif select_function == "2":
@@ -243,7 +243,7 @@ def config_main():
                 input("输入有误，请重新输入(回车以返回)")
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
-        exit()
+        sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
