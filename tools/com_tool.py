@@ -233,7 +233,7 @@ def init_config():
         basic_path = os.path.join(os.path.dirname(sys.argv[0]), 'log')
         log_path = os.path.join(basic_path, 'meg_all.log')
         if not os.path.exists(basic_path):
-            os.mkdir(log_path)
+            os.mkdir(basic_path)
         logging_config.log_config['handlers']['standard_file']['filename'] = log_path
         logging.config.dictConfig(logging_config.log_config)
         gl.standard_log = logging.getLogger('standard_logger')
