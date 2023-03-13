@@ -12,10 +12,36 @@ import tools.global_var as gl
 from tools import get_time, get_cookie_str, check_cookie, update_cookie, get_gift_detail, check_game_roles
 
 CHECK_URL = 'api-takumi.mihoyo.com'
-CLIENT = httpx.AsyncClient()
 
 
-async def post_exchange_gift(gift_id, biz):
+def check_exchange_status(result_list):
+    """
+    检测兑换状态
+    """
+    try:
+        success_list = []
+        fail_list = []
+        for result in result_list:
+            if result[0]:
+                success_list.append(result[1])
+            else:
+                fail_list.append(result[1])
+        if success_list:
+            success_list = list(set(success_list))
+            for success_info in success_list:
+                gl.standard_log.info(f"商品{success_info[0]}兑换成功, 订单号为{success_info[1]}, 请前往米游社APP查看")
+        if fail_list:
+            fail_list = list(set(fail_list))
+            for fail_info in fail_list:
+                gl.standard_log.info(f"商品{fail_info}兑换失败")
+    except KeyboardInterrupt:
+        gl.standard_log.warning("用户强制退出")
+        sys.exit()
+    except Exception as err:
+        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+
+
+async def post_exchange_gift(gift_id, biz, gift_type):
     """
     兑换礼物
     需要account_id与cookie_token
@@ -27,7 +53,6 @@ async def post_exchange_gift(gift_id, biz):
             "point_sn": "myb",
             "goods_id": str(gift_id),
             "exchange_num": 1,
-            "address_id": gl.INI_CONFIG.getint('user_info', 'address_id'),
             "uid": get_cookie_str('account_id') or get_cookie_str('ltuid')
             or get_cookie_str('stuid'),
             "region": "cn_gf01",
@@ -36,33 +61,36 @@ async def post_exchange_gift(gift_id, biz):
         exchange_gift_headers = {
             "Cookie": gl.MI_COOKIE,
         }
-        if biz == 'bbs_cn':
+        if biz != 'bbs_cn' and gift_type == 2:
             exchange_gift_json['uid'] = gl.INI_CONFIG.getint('user_info', 'game_uid')
+        if gift_type != 2:
+            exchange_gift_json['address_id'] = gl.INI_CONFIG.getint('user_info', 'address_id')
         exchange_gift_req = ''
-        for _ in range(gl.INI_CONFIG.getint('exchange_info', 'retry')):
-            exchange_gift_req = await CLIENT.post(exchange_gift_url,
-                                                  headers=exchange_gift_headers,
-                                                  json=exchange_gift_json)
-            if exchange_gift_req.status_code != 429:
-                break
-            time.sleep(1)
+        async with httpx.AsyncClient() as client:
+            for _ in range(gl.INI_CONFIG.getint('exchange_info', 'retry')):
+                exchange_gift_req = await client.post(exchange_gift_url,
+                                                      headers=exchange_gift_headers,
+                                                      json=exchange_gift_json)
+                if exchange_gift_req.status_code != 429:
+                    break
+                time.sleep(1)
         if exchange_gift_req.status_code != 200:
             gl.standard_log.error(f"兑换请求失败, 返回状态码为{str(exchange_gift_req.status_code)}")
-            return False
+            return [False, str(gift_id)]
         exchange_gift_req_json = exchange_gift_req.json()
         if exchange_gift_req_json['data'] is None:
             gl.standard_log.info(f"商品{str(gift_id)}兑换失败, 原因是{exchange_gift_req_json['message']}")
-            return False
-        gl.standard_log.info(
-            f"商品{str(gift_id)}兑换成功, 订单号{exchange_gift_req_json['data']['order_sn']}")
-        print("请手动前往米游社APP查看订单状态")
-        return True
+            return [False, str(gift_id)]
+        # gl.standard_log.info(
+        #     f"商品{str(gift_id)}兑换成功, 订单号{exchange_gift_req_json['data']['order_sn']}")
+        # print("请手动前往米游社APP查看订单状态")
+        return [True, [str(gift_id), exchange_gift_req_json['data']['order_sn']]]
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
         sys.exit()
     except Exception as err:
         gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        return False
+        return [False, str(gift_id)]
 
 
 async def init_task():
@@ -81,12 +109,13 @@ async def init_task():
             if not gift_biz:
                 gl.standard_log.warning("获取game_biz失败")
                 continue
-            if gift_biz != 'bbs_cn':
+            if gift_biz != 'bbs_cn' and gift_type == 2:
                 if not check_game_roles(gift_biz, gl.INI_CONFIG.get('user_info', 'game_uid'),
                                         'check'):
                     continue
             for _ in range(task_thread):
-                task_list.append(asyncio.create_task(post_exchange_gift(good_id, gift_biz)))
+                task_list.append(
+                    asyncio.create_task(post_exchange_gift(good_id, gift_biz, gift_type)))
         return task_list
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
@@ -121,7 +150,8 @@ async def run_task(task_list):
             if now_time >= truth_start_time:
                 os.system(gl.CLEAR_TYPE)
                 print("开始执行兑换任务")
-                await asyncio.gather(*task_list)
+                run_result = await asyncio.gather(*task_list)
+                check_exchange_status(run_result)
                 print("兑换任务执行完毕")
                 return
             elif now_time != temp_time:

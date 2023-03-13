@@ -12,7 +12,7 @@ from tools import check_update, check_cookie, update_cookie, init_config
 from plugin import info_main, gift_main, config_main
 import tools.global_var as gl
 
-MAIN_VERSION = '2.0.4'
+MAIN_VERSION = '2.0.5'
 MESSAGE = f"""\
 ===========================================
 |        Mys Exchange Goods v{MAIN_VERSION:13s}|
@@ -103,7 +103,7 @@ if __name__ == '__main__':
     try:
         start_info()
         init_config()
-        check_update(MAIN_VERSION)
+        # check_update(MAIN_VERSION)
         input("按回车键继续")
         start()
     except KeyboardInterrupt:

@@ -33,8 +33,8 @@ def get_app_cookie():
             "source": "user.mihoyo.com"
         }
         # 获取第一个 cookie
-        login_user_req_one = httpx.post(login_user_url_one, login_user_form_data_one)
-        login_user_cookie_one = httpx.utils.dict_from_cookiejar(login_user_req_one.cookies)
+        login_user_req_one = httpx.post(login_user_url_one, data=login_user_form_data_one)
+        login_user_cookie_one = login_user_req_one.cookies
         if "login_ticket" not in login_user_cookie_one:
             gl.standard_log.warning("缺少'login_ticket'字段, 请重新获取")
             return False
@@ -75,7 +75,7 @@ def get_app_cookie():
             "token_type": 6
         }
         login_user_req_two = httpx.post(login_user_url_two, json=login_user_form_data_two)
-        login_user_cookie_two = httpx.utils.dict_from_cookiejar(login_user_req_two.cookies)
+        login_user_cookie_two = login_user_req_two.cookies
         if "cookie_token" not in login_user_cookie_two:
             gl.standard_log.warning("缺少'cookie_token'字段, 请重新获取")
             return False
@@ -143,7 +143,8 @@ def get_address():
             address_id_in = input("请输入需要写入的地址序号(暂只支持一个): ")
             if address_id_in == "":
                 re_input = input("未输入地址序号, 是否重新输入(默认为Y)?(y/n): ")
-            elif not address_id_in.isdigit() or address_id < int(address_id_in) or int(address_id_in) <= 0:
+            elif not address_id_in.isdigit() or address_id < int(address_id_in) or int(
+                    address_id_in) <= 0:
                 re_input = input("地址序号输入错误, 是否重新输入(默认为Y)?(y/n): ")
             else:
                 break
@@ -193,7 +194,8 @@ def get_game_uid():
             game_uid_in = input("请输入需要写入的UID序号(暂只支持一个): ")
             if game_uid_in == "":
                 re_input = input("未输入游戏UID序号, 是否重新输入(默认为Y)?(y/n): ")
-            elif not game_uid_in.isdigit() or game_uid_id < int(game_uid_in) or int(game_uid_in) <= 0:
+            elif not game_uid_in.isdigit() or game_uid_id < int(game_uid_in) or int(
+                    game_uid_in) <= 0:
                 re_input = input("游戏UID序号输入错误, 是否重新输入(默认为Y)?(y/n): ")
             else:
                 break
@@ -264,8 +266,8 @@ def get_gift_list():
             gift_num = 1
             while True:
                 gift_list_req = httpx.get(gift_list_url,
-                                            params=gift_list_params,
-                                            headers=gift_list_headers)
+                                          params=gift_list_params,
+                                          headers=gift_list_headers)
                 if gift_list_req.status_code != 200:
                     gl.standard_log.error(f"获取礼物列表失败, 请重试, 返回状态码为{str(gift_list_req.status_code)}")
                     return False
@@ -274,8 +276,9 @@ def get_gift_list():
                     # unlimit 为 False 表示兑换总数量有限
                     # next_num 表示下次兑换总数量
                     # total 表示当前可兑换总数量
-                    if not gift_data['unlimit'] and gift_data['next_num'] == 0 and gift_data['total'] == 0 or gift_data[
-                            'account_exchange_num'] == gift_data['account_cycle_limit']:
+                    if not gift_data['unlimit'] and gift_data['next_num'] == 0 and gift_data[
+                            'total'] == 0 or gift_data['account_exchange_num'] == gift_data[
+                                'account_cycle_limit']:
                         continue
                     print("-" * 25)
                     print(f"商品序号: {gift_num}")
@@ -306,7 +309,8 @@ def get_gift_list():
                 input("没有可兑换的商品(回车以返回)")
                 continue
             while True:
-                gift_id_in = set(input("请输入需要抢购的商品序号, 以空格分开, 将忽略输入错误的序号(请注意现有米游币是否足够): ").split(' '))
+                gift_id_in = set(
+                    input("请输入需要抢购的商品序号, 以空格分开, 将忽略输入错误的序号(请注意现有米游币是否足够): ").split(' '))
                 if '' not in gift_id_in:
                     gift_id_write = ''
                     gift_point = 0
