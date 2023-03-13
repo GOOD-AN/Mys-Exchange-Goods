@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import pyperclip
-import requests
+import httpx
 
 import tools.global_var as gl
 from tools import write_config_file, update_cookie, get_gift_detail, check_game_roles, get_point, GAME_NAME, YS_SERVER
@@ -33,8 +33,8 @@ def get_app_cookie():
             "source": "user.mihoyo.com"
         }
         # 获取第一个 cookie
-        login_user_req_one = requests.post(login_user_url_one, login_user_form_data_one)
-        login_user_cookie_one = requests.utils.dict_from_cookiejar(login_user_req_one.cookies)
+        login_user_req_one = httpx.post(login_user_url_one, login_user_form_data_one)
+        login_user_cookie_one = httpx.utils.dict_from_cookiejar(login_user_req_one.cookies)
         if "login_ticket" not in login_user_cookie_one:
             gl.standard_log.warning("缺少'login_ticket'字段, 请重新获取")
             return False
@@ -53,7 +53,7 @@ def get_app_cookie():
             "token_types": 3,
             "uid": mys_uid
         }
-        user_stoken_req = requests.get(user_stoken_url, params=user_stoken_params)
+        user_stoken_req = httpx.get(user_stoken_url, params=user_stoken_params)
         user_stoken_data = None
         if user_stoken_req.status_code == 200:
             user_stoken_data = user_stoken_req.json()["data"]["list"][0]["token"]
@@ -74,8 +74,8 @@ def get_app_cookie():
             "action_type": "login",
             "token_type": 6
         }
-        login_user_req_two = requests.post(login_user_url_two, json=login_user_form_data_two)
-        login_user_cookie_two = requests.utils.dict_from_cookiejar(login_user_req_two.cookies)
+        login_user_req_two = httpx.post(login_user_url_two, json=login_user_form_data_two)
+        login_user_cookie_two = httpx.utils.dict_from_cookiejar(login_user_req_two.cookies)
         if "cookie_token" not in login_user_cookie_two:
             gl.standard_log.warning("缺少'cookie_token'字段, 请重新获取")
             return False
@@ -117,7 +117,7 @@ def get_address():
         address_headers = {
             "Cookie": gl.MI_COOKIE,
         }
-        address_list_req = requests.get(address_url, headers=address_headers)
+        address_list_req = httpx.get(address_url, headers=address_headers)
         if address_list_req.status_code != 200:
             gl.standard_log.error("请求出错, 请稍后重试或联系项目负责人, 状态码为: " + str(address_list_req.status_code))
             return False
@@ -263,7 +263,7 @@ def get_gift_list():
             gift_point_list = []
             gift_num = 1
             while True:
-                gift_list_req = requests.get(gift_list_url,
+                gift_list_req = httpx.get(gift_list_url,
                                             params=gift_list_params,
                                             headers=gift_list_headers)
                 if gift_list_req.status_code != 200:

@@ -4,17 +4,18 @@
 import time
 import os
 import sys
-from threading import Thread
+import asyncio
 import ping3
-import requests
+import httpx
 
 import tools.global_var as gl
 from tools import get_time, get_cookie_str, check_cookie, update_cookie, get_gift_detail, check_game_roles
 
 CHECK_URL = 'api-takumi.mihoyo.com'
+CLIENT = httpx.AsyncClient()
 
 
-def post_exchange_gift(gift_id, biz):
+async def post_exchange_gift(gift_id, biz):
     """
     兑换礼物
     需要account_id与cookie_token
@@ -27,7 +28,8 @@ def post_exchange_gift(gift_id, biz):
             "goods_id": str(gift_id),
             "exchange_num": 1,
             "address_id": gl.INI_CONFIG.getint('user_info', 'address_id'),
-            "uid": get_cookie_str('account_id') or get_cookie_str('ltuid') or get_cookie_str('stuid'),
+            "uid": get_cookie_str('account_id') or get_cookie_str('ltuid')
+            or get_cookie_str('stuid'),
             "region": "cn_gf01",
             "game_biz": biz
         }
@@ -38,9 +40,9 @@ def post_exchange_gift(gift_id, biz):
             exchange_gift_json['uid'] = gl.INI_CONFIG.getint('user_info', 'game_uid')
         exchange_gift_req = ''
         for _ in range(gl.INI_CONFIG.getint('exchange_info', 'retry')):
-            exchange_gift_req = requests.post(exchange_gift_url,
-                                     headers=exchange_gift_headers,
-                                     json=exchange_gift_json)
+            exchange_gift_req = await CLIENT.post(exchange_gift_url,
+                                                  headers=exchange_gift_headers,
+                                                  json=exchange_gift_json)
             if exchange_gift_req.status_code != 429:
                 break
             time.sleep(1)
@@ -51,7 +53,8 @@ def post_exchange_gift(gift_id, biz):
         if exchange_gift_req_json['data'] is None:
             gl.standard_log.info(f"商品{str(gift_id)}兑换失败, 原因是{exchange_gift_req_json['message']}")
             return False
-        gl.standard_log.info(f"商品{str(gift_id)}兑换成功, 订单号{exchange_gift_req_json['data']['order_sn']}")
+        gl.standard_log.info(
+            f"商品{str(gift_id)}兑换成功, 订单号{exchange_gift_req_json['data']['order_sn']}")
         print("请手动前往米游社APP查看订单状态")
         return True
     except KeyboardInterrupt:
@@ -62,7 +65,7 @@ def post_exchange_gift(gift_id, biz):
         return False
 
 
-def init_task():
+async def init_task():
     """
     初始化任务
     """
@@ -79,12 +82,11 @@ def init_task():
                 gl.standard_log.warning("获取game_biz失败")
                 continue
             if gift_biz != 'bbs_cn':
-                if not check_game_roles(gift_biz, gl.INI_CONFIG.get('user_info', 'game_uid'), 'check'):
+                if not check_game_roles(gift_biz, gl.INI_CONFIG.get('user_info', 'game_uid'),
+                                        'check'):
                     continue
             for _ in range(task_thread):
-                task_list.append(
-                    Thread(target=post_exchange_gift,
-                           args=(good_id, gift_biz)))
+                task_list.append(asyncio.create_task(post_exchange_gift(good_id, gift_biz)))
         return task_list
     except KeyboardInterrupt:
         gl.standard_log.warning("用户强制退出")
@@ -94,7 +96,7 @@ def init_task():
         return False
 
 
-def run_task(task_list):
+async def run_task(task_list):
     """
     运行任务
     """
@@ -119,10 +121,7 @@ def run_task(task_list):
             if now_time >= truth_start_time:
                 os.system(gl.CLEAR_TYPE)
                 print("开始执行兑换任务")
-                for task in task_list:
-                    task.start()
-                for task in task_list:
-                    task.join()
+                await asyncio.gather(*task_list)
                 print("兑换任务执行完毕")
                 return
             elif now_time != temp_time:
@@ -160,7 +159,7 @@ def run_task(task_list):
         return False
 
 
-def gift_main():
+async def gift_main():
     """
     开始任务
     """
@@ -170,13 +169,13 @@ def gift_main():
             input("按回车键返回")
             return True
         gl.standard_log.info("开始初始化任务")
-        task_list = init_task()
+        task_list = await init_task()
         if not task_list:
             gl.standard_log.info("没有任务, 即将返回主菜单")
             input("按回车键返回")
             return True
         gl.standard_log.info("开始运行任务")
-        run_task(task_list)
+        await run_task(task_list)
         gl.standard_log.info("程序运行完毕, 即将返回主菜单")
         input("按回车键返回")
         return True

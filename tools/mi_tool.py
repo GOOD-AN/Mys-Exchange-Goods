@@ -6,7 +6,7 @@ import re
 import string
 import sys
 import time
-import requests
+import httpx
 
 from tools import md5_encode, get_cookie_str, write_config_file
 import tools.global_var as gl
@@ -87,7 +87,7 @@ def update_cookie():
             "stoken": get_cookie_str("stoken")
         }
         print("开始更新cookie")
-        update_cookie_url_req = requests.get(update_cookie_url, params=update_cookie_url_params)
+        update_cookie_url_req = httpx.get(update_cookie_url, params=update_cookie_url_params)
         update_cookie_url_req = update_cookie_url_req.json()
         if update_cookie_url_req['data'] is None:
             gl.standard_log.error(f"获取出错，错误原因为: {update_cookie_url_req['message']}")
@@ -116,7 +116,7 @@ def get_point():
         point_headers = {
             'Cookie': gl.MI_COOKIE,
         }
-        point_req = requests.get(point_url, headers=point_headers)
+        point_req = httpx.get(point_url, headers=point_headers)
         if point_req.status_code != 200:
             gl.standard_log.error(f"获取米游币数量失败, 返回状态码为{str(point_req.status_code)}")
             return False
@@ -139,7 +139,7 @@ def check_cookie() -> bool:
         check_cookie_hearders = {
             'Cookie': gl.MI_COOKIE,
         }
-        check_cookie_req = requests.get(check_cookie_url, headers=check_cookie_hearders)
+        check_cookie_req = httpx.get(check_cookie_url, headers=check_cookie_hearders)
         if check_cookie_req.status_code != 200:
             gl.standard_log.error(f"检查Cookie失败, 返回状态码为{str(check_cookie_req.status_code)}")
             return False
@@ -168,7 +168,7 @@ def get_gift_detail(goods_id: int, get_type=''):
             "point_sn": "myb",
             "goods_id": goods_id,
         }
-        gift_detail_req = requests.get(gift_detail_url, params=gift_detail_params)
+        gift_detail_req = httpx.get(gift_detail_url, params=gift_detail_params)
         if gift_detail_req.status_code != 200:
             return False
         gift_detail = gift_detail_req.json()["data"]
@@ -198,7 +198,7 @@ def get_action_ticket():
         uid = get_cookie_str('account_id') or get_cookie_str('ltuid') or get_cookie_str('stuid')
         action_ticket_url = gl.MI_URL + "/auth/api/getActionTicketBySToken"
         action_ticket_params = {"action_type": "game_role", "stoken": stoken, "uid": uid}
-        action_ticket_req = requests.get(action_ticket_url, params=action_ticket_params)
+        action_ticket_req = httpx.get(action_ticket_url, params=action_ticket_params)
         if action_ticket_req.status_code != 200:
             gl.standard_log.error(f"ticket请求失败, 请检查cookie, 返回状态码为{str(action_ticket_req.status_code)}")
             return False
@@ -231,7 +231,7 @@ def check_game_roles(game_biz='', uid=0, get_type=''):
         if get_type == 'check':
             game_roles_params['uid'] = uid
         game_roles_headers = {"cookie": gl.MI_COOKIE}
-        game_roles_req = requests.get(game_roles_url,
+        game_roles_req = httpx.get(game_roles_url,
                                       headers=game_roles_headers,
                                       params=game_roles_params)
         if game_roles_req.status_code != 200:

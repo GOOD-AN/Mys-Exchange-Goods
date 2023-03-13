@@ -5,6 +5,7 @@
 import os
 import sys
 import time
+import asyncio
 from getpass import getuser
 
 from tools import check_update, check_cookie, update_cookie, init_config
@@ -14,7 +15,7 @@ import tools.global_var as gl
 MAIN_VERSION = '2.0.4'
 MESSAGE = f"""\
 ===========================================
-|        Mys Exchange Goods v{MAIN_VERSION}        |
+|        Mys Exchange Goods v{MAIN_VERSION:13s}|
 ===========================================
 Description: 用于自动兑换米游社礼物
 Author     : GOOD-AN
@@ -46,7 +47,7 @@ def start():
             if select_function == "1":
                 info_main()
             elif select_function == "2":
-                gift_main()
+                asyncio.run(gift_main())
             elif select_function == "3":
                 config_main()
             elif select_function == "4":

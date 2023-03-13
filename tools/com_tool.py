@@ -11,7 +11,7 @@ import time
 from shutil import copyfile
 import logging.config
 from ntplib import NTPClient
-import requests
+import httpx
 
 import tools.global_var as gl
 from config import logging_config
@@ -143,9 +143,9 @@ def check_update(main_version):
             for check_update_url in CHECK_UPDATE_URL_LIST:
                 check_url = check_update_url + "update_log.json"
                 try:
-                    check_info = requests.get(check_url, timeout=5).json()
+                    check_info = httpx.get(check_url, timeout=5).json()
                     break
-                except requests.exceptions.RequestException:
+                except httpx.exceptions.RequestException:
                     continue
             if not check_info:
                 print("检查更新失败")
