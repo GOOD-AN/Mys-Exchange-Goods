@@ -1,15 +1,16 @@
 """
 米游社商品兑换
 """
-import time
+import asyncio
 import os
 import sys
-import asyncio
-import ping3
+import time
+
 import httpx
+import ping3
 
 import tools.global_var as gl
-from tools import get_time, get_cookie_str, check_cookie, update_cookie, get_gift_detail, check_game_roles
+from tools import get_time, check_cookie, update_cookie, get_gift_detail, check_game_roles, UserInfo
 
 CHECK_URL = 'api-takumi.mihoyo.com'
 
@@ -29,19 +30,19 @@ def check_exchange_status(result_list):
         if success_list:
             success_list = list(set(success_list))
             for success_info in success_list:
-                gl.standard_log.info(f"商品{success_info[0]}兑换成功, 订单号为{success_info[1]}, 请前往米游社APP查看")
+                print(f"商品{success_info[0]}兑换成功, 订单号为{success_info[1]}, 请前往米游社APP查看")
         if fail_list:
             fail_list = list(set(fail_list))
             for fail_info in fail_list:
-                gl.standard_log.info(f"商品{fail_info}兑换失败")
+                print(f"商品{fail_info}兑换失败")
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        print("用户强制退出")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
 
 
-async def post_exchange_gift(gift_id, biz, gift_type):
+async def post_exchange_gift(account: UserInfo, gift_id, biz, region, gift_type):
     """
     兑换礼物
     需要account_id与cookie_token
@@ -53,13 +54,12 @@ async def post_exchange_gift(gift_id, biz, gift_type):
             "point_sn": "myb",
             "goods_id": str(gift_id),
             "exchange_num": 1,
-            "uid": get_cookie_str('account_id') or get_cookie_str('ltuid')
-            or get_cookie_str('stuid'),
-            "region": "cn_gf01",
+            "uid": account.mys_uid,
+            "region": region,
             "game_biz": biz
         }
         exchange_gift_headers = {
-            "Cookie": gl.MI_COOKIE,
+            "Cookie": account.cookie,
         }
         if biz != 'bbs_cn' and gift_type == 2:
             exchange_gift_json['uid'] = gl.INI_CONFIG.getint('user_info', 'game_uid')
@@ -73,23 +73,17 @@ async def post_exchange_gift(gift_id, biz, gift_type):
                                                       json=exchange_gift_json)
                 if exchange_gift_req.status_code != 429:
                     break
-                time.sleep(1)
         if exchange_gift_req.status_code != 200:
-            gl.standard_log.error(f"兑换请求失败, 返回状态码为{str(exchange_gift_req.status_code)}")
             return [False, str(gift_id)]
         exchange_gift_req_json = exchange_gift_req.json()
         if exchange_gift_req_json['data'] is None:
-            gl.standard_log.info(f"商品{str(gift_id)}兑换失败, 原因是{exchange_gift_req_json['message']}")
             return [False, str(gift_id)]
-        # gl.standard_log.info(
-        #     f"商品{str(gift_id)}兑换成功, 订单号{exchange_gift_req_json['data']['order_sn']}")
-        # print("请手动前往米游社APP查看订单状态")
         return [True, [str(gift_id), exchange_gift_req_json['data']['order_sn']]]
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        print("用户强制退出")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return [False, str(gift_id)]
 
 
@@ -102,12 +96,12 @@ async def init_task():
         task_thread = gl.INI_CONFIG.getint('exchange_info', 'thread')
         task_list = []
         if not check_cookie():
-            gl.standard_log.info("Cookie失效, 尝试更新")
+            print("Cookie失效, 尝试更新")
             update_cookie()
         for good_id in gift_list:
             gift_biz, gift_type = get_gift_detail(good_id, 'biz')
             if not gift_biz:
-                gl.standard_log.warning("获取game_biz失败")
+                print("获取game_biz失败")
                 continue
             if gift_biz != 'bbs_cn' and gift_type == 2:
                 if not check_game_roles(gift_biz, gl.INI_CONFIG.get('user_info', 'game_uid'),
@@ -118,10 +112,10 @@ async def init_task():
                     asyncio.create_task(post_exchange_gift(good_id, gift_biz, gift_type)))
         return task_list
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        print("用户强制退出")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -134,7 +128,7 @@ async def run_task(task_list):
         try:
             start_time = time.mktime(time.strptime(start_timestamp, "%Y-%m-%d %H:%M:%S"))
         except ValueError:
-            gl.standard_log.warning("时间格式错误, 请重新设置")
+            print("时间格式错误, 请重新设置")
             return False
         ntp_enable = gl.INI_CONFIG.getboolean('ntp', 'enable')
         ntp_server = gl.INI_CONFIG.get('ntp', 'ntp_server')
@@ -182,10 +176,10 @@ async def run_task(task_list):
                 )
                 temp_time = now_time
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        print("用户强制退出")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -195,23 +189,23 @@ async def gift_main():
     """
     try:
         if not gl.MI_COOKIE:
-            gl.standard_log.warning("请填写cookie")
+            print("请填写cookie")
             input("按回车键返回")
             return True
-        gl.standard_log.info("开始初始化任务")
+        print("开始初始化任务")
         task_list = await init_task()
         if not task_list:
-            gl.standard_log.info("没有任务, 即将返回主菜单")
+            print("没有任务, 即将返回主菜单")
             input("按回车键返回")
             return True
-        gl.standard_log.info("开始运行任务")
+        print("开始运行任务")
         await run_task(task_list)
-        gl.standard_log.info("程序运行完毕, 即将返回主菜单")
+        print("程序运行完毕, 即将返回主菜单")
         input("按回车键返回")
         return True
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        print("用户强制退出")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False

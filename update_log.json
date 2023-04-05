@@ -50,7 +50,7 @@
         {
             "version": "2.0.5",
             "update_time": "2023-03-13",
-            "update_content": ["1.将请求方式由requests改为httpx", "2.兑换商品修改为异步", "3.修复部分错误"]
+            "update_content": ["1.将请求库由requests改为HTTPX", "2.兑换商品修改为异步", "3.修复部分错误"]
         }
     ]
 }

@@ -2,3 +2,5 @@ __pycache__
 venv
 config.*
 log
+user_info
+goods_list.json

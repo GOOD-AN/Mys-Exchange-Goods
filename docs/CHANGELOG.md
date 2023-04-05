@@ -3,7 +3,7 @@
 ## [2.0.5.230313 Alpha] - 2023-0313
 
 ### Changed
-- 将请求方式由requests改为httpx
+- 将请求库由requests改为HTTPX
 - 兑换商品修改为异步
 
 ### Fixed

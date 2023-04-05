@@ -1,4 +1,4 @@
-<p align="center"><img alt="项目图标" src="./images/logo.png"></p>
+<p align="center"><img alt="项目图标" src="data/images/logo.png"></p>
 <div align="center">
   <a href="https://github.com/GOOD-AN/Mys-Exchange-Goods/releases/latest" target="_blank">
     <img alt="最新发行版" src="https://img.shields.io/github/v/release/GOOD-AN/Mys-Exchange-Goods?logo=python&style=for-the-badge">

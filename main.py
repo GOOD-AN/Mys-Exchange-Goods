@@ -2,15 +2,15 @@
 运行主程序
 """
 
+import asyncio
 import os
 import sys
 import time
-import asyncio
 from getpass import getuser
 
-from tools import check_update, check_cookie, update_cookie, init_config
-from plugin import info_main, gift_main, config_main
 import tools.global_var as gl
+from plugin import info_menu, gift_main
+from tools import check_update, init_config
 
 MAIN_VERSION = '2.0.5'
 MESSAGE = f"""\
@@ -25,14 +25,16 @@ LICENSE    : MIT
 """
 
 
-def start():
+def main_menu():
     """
     开始任务
     """
     try:
-        if gl.MI_COOKIE and not check_cookie():
-            gl.standard_log.info("Cookie失效, 尝试更新")
-            update_cookie()
+        # if gl.MI_COOKIE and not check_cookie():
+        #     print("Cookie失效, 尝试更新")
+        #     if not update_cookie():
+        #         print("Cookie更新失败, 可能需要重新获取cookie")
+        #         input("按回车键继续")
         while True:
             os.system(gl.CLEAR_TYPE)
             print("""主菜单
@@ -45,11 +47,12 @@ def start():
             select_function = input("请输入选择功能的序号: ")
             os.system(gl.CLEAR_TYPE)
             if select_function == "1":
-                info_main()
+                asyncio.run(info_menu())
             elif select_function == "2":
-                asyncio.run(gift_main())
+                print("暂未开放")
+                # asyncio.run(gift_main())
             elif select_function == "3":
-                config_main()
+                print("暂未开放")
             elif select_function == "4":
                 check_update(MAIN_VERSION)
                 input("按回车键继续")
@@ -57,11 +60,12 @@ def start():
                 sys.exit()
             else:
                 input("输入有误，请重新输入(回车以返回)")
+            input("按回车键继续")
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        print("用户强制退出")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         sys.exit()
 
@@ -91,25 +95,25 @@ def start_info():
             print(f"{user_name}，夜深了，花睡了，早些休息哦~")
         print(MESSAGE)
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        print("用户强制退出")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
 
 if __name__ == '__main__':
     try:
-        start_info()
+        # start_info()
         init_config()
         # check_update(MAIN_VERSION)
-        input("按回车键继续")
-        start()
+        # input("按回车键继续")
+        main_menu()
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        print("用户强制退出")
         sys.exit()
     except Exception as main_err:
-        gl.standard_log.error(f"运行出错, 错误为: {main_err}, 错误行数为: {main_err.__traceback__.tb_lineno}")
+        print(f"运行出错, 错误为: {main_err}, 错误行数为: {main_err.__traceback__.tb_lineno}")
         input("按回车键继续")
         sys.exit()
