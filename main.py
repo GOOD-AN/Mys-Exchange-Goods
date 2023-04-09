@@ -9,7 +9,7 @@ import time
 from getpass import getuser
 
 import tools.global_var as gl
-from plugin import info_menu, gift_main
+from plugin import info_menu, goods_main
 from tools import check_update, init_config
 
 MAIN_VERSION = '2.0.5'
@@ -50,7 +50,7 @@ def main_menu():
                 asyncio.run(info_menu())
             elif select_function == "2":
                 print("暂未开放")
-                # asyncio.run(gift_main())
+                # asyncio.run(goods_main())
             elif select_function == "3":
                 print("暂未开放")
             elif select_function == "4":

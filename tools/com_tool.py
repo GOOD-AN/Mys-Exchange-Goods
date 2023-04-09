@@ -220,12 +220,13 @@ def init_config():
         gl.CONFIG_PATH = os.path.join(os.path.dirname(sys.argv[0]), "config")
         gl.INI_CONFIG = load_config()
         gl.CLEAR_TYPE = check_plat()
-        gl.DATA_PATH = os.path.join(gl.BASIC_PATH, 'data', 'user_info')
+        gl.DATA_PATH = os.path.join(gl.BASIC_PATH, 'data')
+        gl.USER_DATA_PATH = os.path.join(gl.DATA_PATH, 'user_info')
         user_data_dict = {}
-        if os.path.exists(gl.DATA_PATH):
-            user_data_file_list = os.listdir(gl.DATA_PATH)
+        if os.path.exists(gl.USER_DATA_PATH):
+            user_data_file_list = os.listdir(gl.USER_DATA_PATH)
             for user_data_file in user_data_file_list:
-                with open(os.path.join(gl.DATA_PATH, user_data_file), 'r', encoding='utf-8') as f:
+                with open(os.path.join(gl.USER_DATA_PATH, user_data_file), 'r', encoding='utf-8') as f:
                     user_data = json.load(f)
                     user_game_list = []
                     user_address_list = []

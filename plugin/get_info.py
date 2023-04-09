@@ -3,6 +3,7 @@
 """
 import json
 import os
+import re
 import sys
 import time
 
@@ -10,8 +11,8 @@ import httpx
 import pyperclip
 
 import tools.global_var as gl
-from tools import UserInfo, AddressInfo, ClassEncoder
-from tools import write_config_file, update_cookie, get_gift_detail, check_game_roles, get_point
+from tools import UserInfo, AddressInfo, ClassEncoder, GoodsInfo
+from tools import update_cookie, get_goods_detail, check_game_roles, get_point, GAME_NAME, MYS_CHANNEL
 
 
 def select_user(select_user_data: dict):
@@ -52,7 +53,7 @@ async def get_cookie():
     获取app端cookie
     参考:
     https://bbs.tampermonkey.net.cn/thread-1040-1-1.html
-    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/login.py
+    https://github.com/Womsxd/MihoyoBBSTools/blob/master/login.py
     """
     try:
         login_url = 'https://user.mihoyo.com/#/login/captcha'
@@ -144,8 +145,8 @@ async def get_address(account: UserInfo):
     需要account_id与cookie_token
     """
     try:
-        if account.cookie == "":
-            print("请先获取Cookie")
+        if account.cookie_token == "":
+            print("缺少cookie_token，请重新获取cookie")
             return False
         address_url = gl.MI_URL + '/account/address/list'
         address_headers = {
@@ -181,12 +182,15 @@ async def get_address(account: UserInfo):
         return False
 
 
-def get_gift_list():
+async def get_goods_list(account: UserInfo):
     """
     获取商品列表
-    查询某商品该账户是否兑换, 需要account_id与cookie_token, 非必须, 错误也可继续
+    需要账户信息
+    查询某商品该账户是否兑换, 需要account_id与cookie_token
     """
     try:
+        if account.mys_uid == "" and account.cookie == "":
+            print("请先获取账户信息")
         while True:
             os.system(gl.CLEAR_TYPE)
             print("""查询商品列表菜单
@@ -211,8 +215,8 @@ def get_gift_list():
             if game_choice not in game_type_dict:
                 input("输入有误, 请重新输入(回车以返回)")
                 continue
-            gift_list_url = gl.MI_URL + '/mall/v1/web/goods/list'
-            gift_list_params = {
+            goods_list_url = gl.MI_URL + '/mall/v1/web/goods/list'
+            goods_list_params = {
                 "app_id": 1,
                 "point_sn": "myb",
                 "page_size": 20,
@@ -221,96 +225,133 @@ def get_gift_list():
                 # '崩坏学园2':'bh2', '未定事件簿':'nxx', '米游社':'bbs'
                 "game": game_type_dict[game_choice],
             }
-            gift_list_headers = {
-                "Cookie": gl.MI_COOKIE,
+            goods_list_headers = {
+                "Cookie": account.cookie,
             }
-            gift_id_list = []
-            gift_point_list = []
-            gift_num = 1
-            while True:
-                gift_list_req = httpx.get(gift_list_url,
-                                          params=gift_list_params,
-                                          headers=gift_list_headers)
-                if gift_list_req.status_code != 200:
-                    print(f"获取礼物列表失败, 请重试, 返回状态码为{str(gift_list_req.status_code)}")
-                    return False
-                gift_list = gift_list_req.json()["data"]
-                for gift_data in gift_list["list"]:
-                    # unlimit 为 False 表示兑换总数量有限
-                    # next_num 表示下次兑换总数量
-                    # total 表示当前可兑换总数量
-                    if not gift_data['unlimit'] and gift_data['next_num'] == 0 and gift_data['total'] == 0 \
-                            or gift_data['account_exchange_num'] == gift_data['account_cycle_limit']:
-                        continue
-                    print("-" * 25)
-                    print(f"商品序号: {gift_num}")
-                    print(f"商品名称: {gift_data['goods_name']}")
-                    print(f"商品价格: {gift_data['price']} 米游币")
-                    if gift_data['total'] == 0 and gift_data['next_num'] == 0:
-                        print("商品库存: 无限")
+            user_point = -1
+            if account.stoken != "" or account.stuid != "":
+                user_point = await get_point(account)
+            goods_class_list = []
+            goods_num = 1
+            async with httpx.AsyncClient() as client:
+                while True:
+                    goods_list_req = await client.get(goods_list_url, params=goods_list_params,
+                                                      headers=goods_list_headers)
+                    if goods_list_req.status_code != 200:
+                        print(f"获取礼物列表失败, 请重试, 返回状态码为{str(goods_list_req.status_code)}")
+                        return False
+                    goods_list = goods_list_req.json()["data"]
+                    for goods_data in goods_list["list"]:
+                        goods_class = GoodsInfo()
+                        # unlimit 为 False 表示兑换总数量有限
+                        # next_num 表示下次兑换总数量
+                        # total 表示当前可兑换总数量
+                        if not goods_data['unlimit'] and goods_data['next_num'] == 0 and goods_data['total'] == 0 \
+                                or goods_data['account_exchange_num'] == goods_data['account_cycle_limit']:
+                            continue
+                        game_biz, goods_type, goods_rule, exchange_time = await get_goods_detail(goods_data['goods_id'])
+                        print("-" * 25)
+                        print(f"商品序号: {goods_num}")
+                        print(f"商品名称: {goods_data['goods_name']}")
+                        print(f"商品价格: {goods_data['price']} 米游币")
+                        goods_class.goods_id = goods_data['goods_id']
+                        goods_class.goods_name = goods_data['goods_name']
+                        goods_class.goods_price = goods_data['price']
+                        goods_class.goods_type = goods_type
+                        goods_class.game_biz = game_biz
+                        goods_class.goods_rule = goods_rule
+                        if goods_data['total'] == 0 and goods_data['next_num'] == 0:
+                            print("商品库存: 无限")
+                            goods_class.goods_num = -1
+                        else:
+                            goods_class.goods_num = goods_data['next_num'] or goods_data['total']
+                            print(f"商品库存: {goods_class.goods_num}")
+                        if goods_data['next_time'] == 0:
+                            print("商品兑换时间: 任何时段")
+                            goods_class.goods_time = -1
+                        else:
+                            print(f"商品兑换时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(exchange_time))}")
+                            goods_class.goods_time = exchange_time
+                        # month 为每月限购
+                        if goods_data["account_cycle_type"] == "forever":
+                            print(f"每人限购: {goods_data['account_cycle_limit']} 个")
+                        else:
+                            print(f"本月限购: {goods_data['account_cycle_limit']} 个")
+                        goods_class.goods_limit = goods_data['account_cycle_limit']
+                        goods_class_list.append(goods_class)
+                        goods_num += 1
+                    if goods_list['total'] > goods_list_params['page'] * goods_list_params['page_size']:
+                        goods_list_params['page'] += 1
                     else:
-                        print(f"商品库存: {gift_data['next_num'] or gift_data['total']}")
-                    if gift_data['next_time'] == 0:
-                        print("商品兑换时间: 任何时段")
-                    else:
-                        gift_time = time.localtime(get_gift_detail(gift_data['goods_id']))
-                        print(f"商品兑换时间: {time.strftime('%Y-%m-%d %H:%M:%S', gift_time)}")
-                    # month 为每月限购
-                    if gift_data["account_cycle_type"] == "forever":
-                        print(f"每人限购: {gift_data['account_cycle_limit']} 个")
-                    else:
-                        print(f"本月限购: {gift_data['account_cycle_limit']} 个")
-                    gift_num += 1
-                    gift_id_list.append(gift_data['goods_id'])
-                    gift_point_list.append(gift_data['price'])
-                if gift_list['total'] > gift_list_params['page'] * gift_list_params['page_size']:
-                    gift_list_params['page'] += 1
-                else:
-                    break
-            if not gift_id_list:
+                        break
+            if not goods_class_list:
                 input("没有可兑换的商品(回车以返回)")
                 continue
             while True:
-                gift_id_in = set(
-                    input(
-                        "请输入需要抢购的商品序号, 以空格分开, 将忽略输入错误的序号(请注意现有米游币是否足够): ").split(
-                        ' '))
-                if '' not in gift_id_in:
-                    gift_id_write = ''
-                    gift_point = 0
-                    for gift_id in gift_id_in:
-                        if gift_id.isdigit() and 0 < int(gift_id) < gift_num:
-                            gift_id_write += gift_id_list[int(gift_id) - 1] + ','
-                            gift_point += gift_point_list[int(gift_id) - 1]
-                    user_point = get_point()
-                    if user_point and user_point < gift_point:
-                        print(f"当前米游币不足, 当前米游币: {user_point}, 所需米游币: {gift_point}")
+                goods_id_in = set(re.split(r'\s+', input(
+                    "请输入需要抢购的商品序号, 以空格分开, 将忽略输入错误的序号(请注意现有米游币是否足够): ").rstrip(
+                    ' ')))
+                if '' not in goods_id_in:
+                    goods_select_list = []
+                    goods_point = 0
+                    for goods_id in goods_id_in:
+                        if goods_id.isdigit() and 0 < int(goods_id) < goods_num:
+                            now_goods = goods_class_list[int(goods_id) - 1]
+                            exchange_num = 1
+                            if int(now_goods.goods_limit) > 1:
+                                while True:
+                                    exchange_num = input(
+                                        f"请输入商品{now_goods.goods_name}的兑换数量, 当前限购数量为{now_goods.goods_limit}: ")
+                                    if exchange_num.isdigit() and 0 < int(exchange_num) <= int(now_goods.goods_limit):
+                                        exchange_num = int(exchange_num)
+                                        break
+                                    else:
+                                        print("输入数量错误, 请重新输入")
+                            now_goods_dict = {
+                                "mys_uid": account.mys_uid,
+                                "goods_id": now_goods.goods_id,
+                                "goods_name": now_goods.goods_name,
+                                "exchange_num": exchange_num,
+                                "exchange_time": now_goods.goods_time
+                            }
+                            now_level = -1
+                            if now_goods.game_biz != 'bbs_cn' and now_goods.goods_type == 2:
+                                for account_game in account.game_list:
+                                    if account_game.game_biz == game_biz and account_game.game_level > now_level:
+                                        now_level = account_game.game_level
+                                        now_goods_dict["game_id"] = account_game.uid
+                                if now_level == -1:
+                                    print(f"当前账号未绑定{GAME_NAME[game_biz]}游戏, 请前往APP绑定后再进行兑换")
+                            if now_goods.goods_rule:
+                                for goods_rule in now_goods.goods_rule:
+                                    if goods_rule['rule_id'] == 1:
+                                        goods_channel = goods_rule['values'].split(":")[0]
+                                        limit_level = goods_rule['values'].split(":")[1]
+                                        if account.channel_dict[goods_channel] < limit_level:
+                                            print(f"当前商品兑换要求频道{MYS_CHANNEL[goods_channel]}等级为: {limit_level}, "
+                                                  f"当前频道等级为{account.channel_dict[goods_channel]}, 渠道不符, 跳过兑换")
+                                            print("请前往米游社APP完成任务提升等级, 如信息错误或需要更新绑定信息, "
+                                                  "请稍后使用更新频道信息功能")
+                                        continue
+                                    elif goods_rule['rule_id'] == 2 and now_level < goods_rule['values']:
+                                        print(f"当前游戏所绑定账号最高等级为: {now_level}, 所需兑换等级: "
+                                              f"{goods_rule['rule_value']}, 等级不足, 跳过兑换")
+                                        print("请前往米游社APP绑定满足要求的账号, 如信息错误或需要更新绑定信息, "
+                                              "请稍后使用更新游戏账号信息功能")
+                                        continue
+                            goods_select_list.append(now_goods_dict)
+                            goods_point += now_goods.goods_price * exchange_num
+                    if user_point != -1 and user_point < goods_point:
+                        print(f"当前米游币不足, 当前米游币数量: {user_point}, 所需米游币数量: {goods_point}")
                         choice = input("是否继续选择商品, 取消将返回重新选择(默认为Y)(Y/N): ")
                         if choice in ('n', 'N'):
                             continue
-                    if gl.INI_CONFIG.get('exchange_info', 'good_id'):
-                        while True:
-                            print("检测到已存在商品id, 需要的操作是\n1.追加\n2.替换\n3.删除\n4.取消")
-                            choice = input("请输入选项: ")
-                            if choice == '1':
-                                gift_id_write += gl.INI_CONFIG.get('exchange_info', 'good_id')
-                                gift_id_write_set = set(gift_id_write.split(','))
-                                gift_id_write = ','.join(gift_id_write_set)
-                                write_config_file('exchange_info', 'good_id', gift_id_write)
-                            elif choice == '2':
-                                gift_id_write = gift_id_write.rstrip(',')
-                                write_config_file('exchange_info', 'good_id', gift_id_write)
-                            elif choice == '3':
-                                write_config_file('exchange_info', 'good_id', '')
-                            elif choice == '4':
-                                break
-                            else:
-                                input("输入有误, 请重新输入(回车以返回)")
-                                continue
-                            break
-                    else:
-                        gift_id_write = gift_id_write.rstrip(',')
-                        write_config_file('exchange_info', 'good_id', gift_id_write)
+                    with open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "r", encoding="utf-8") as f:
+                        old_data = json.load(f)
+                        old_data.extend(goods_select_list)
+                    with open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "w", encoding="utf-8") as f:
+                        json.dump(old_data, f, ensure_ascii=False, indent=4)
+                    gl.EXCHANGE_DICT = old_data
                     break
                 else:
                     print("未选择任何商品")
@@ -349,9 +390,9 @@ async def get_user_info():
             user_info_json['address_list'] = address_list
             new_user.address_list = address_list
         if user_info_json:
-            if not os.path.exists(gl.DATA_PATH):
-                os.makedirs(gl.DATA_PATH)
-            with open(os.path.join(gl.DATA_PATH, f"{mys_uid}.json"), 'w', encoding='utf-8') as f:
+            if not os.path.exists(gl.USER_DATA_PATH):
+                os.makedirs(gl.USER_DATA_PATH)
+            with open(os.path.join(gl.USER_DATA_PATH, f"{mys_uid}.json"), 'w', encoding='utf-8') as f:
                 json.dump(user_info_json, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                 gl.USER_DICT[mys_uid] = new_user
         return new_user
@@ -395,8 +436,7 @@ async def info_menu():
                 else:
                     print("获取账户信息失败")
             elif select_function == "2":
-                print("暂未开放")
-                # get_gift_list()
+                await get_goods_list(account)
                 # continue
             elif select_function == "3":
                 now_point = await get_point(account)
@@ -410,7 +450,7 @@ async def info_menu():
                 game_info_list = await check_game_roles(account)
                 if game_info_list:
                     account.game_list = game_info_list
-                    with open(os.path.join(gl.DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
+                    with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
                         json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                     print("更新游戏账号信息成功")
                 else:
@@ -419,13 +459,16 @@ async def info_menu():
                 address_list = await get_address(account)
                 if address_list:
                     account.address_list = address_list
-                    with open(os.path.join(gl.DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
+                    with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
                         json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                     print("更新收货地址信息成功")
                 else:
                     print("未获取到收货地址信息")
             elif select_function == "7":
-                account = select_user(gl.USER_DICT)
+                if gl.USER_DICT:
+                    account = select_user(gl.USER_DICT)
+                else:
+                    print("暂无账户信息, 请先获取账户信息")
             elif select_function == "0":
                 return
             else:

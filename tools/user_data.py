@@ -12,7 +12,7 @@ class ClassEncoder(json.JSONEncoder):
     """
 
     def default(self, obj):
-        if isinstance(obj, (UserInfo, GameInfo, AddressInfo)):
+        if isinstance(obj, (UserInfo, GameInfo, AddressInfo, ExchangeInfo, GoodsInfo)):
             return dict((key.lstrip("_"), value) for key, value in obj.__dict__.items())
         else:
             return json.JSONEncoder.default(self, obj)
@@ -32,16 +32,19 @@ class UserInfo:
             self.cookie = user_info['cookie']
             self.game_list = user_info['game_list']
             self.address_list = user_info['address_list']
+            self.channel_dict = user_info['channel_dict']
         elif isinstance(user_info, list):
             self.mys_uid = user_info[0]
             self.cookie = user_info[1]
             self.game_list = []
             self.address_list = []
+            self.channel_dict = {}
         elif user_info is None:
             self.mys_uid = ''
             self.cookie = ''
             self.game_list = []
             self.address_list = []
+            self.channel_dict = {}
         else:
             raise TypeError('user_info type error')
 
@@ -72,6 +75,13 @@ class UserInfo:
         获取地址列表
         """
         return self._address_list
+
+    @property
+    def channel_dict(self) -> dict:
+        """
+        获取渠道等级信息
+        """
+        return self._channel_dict
 
     @mys_uid.setter
     def mys_uid(self, value: str):
@@ -122,6 +132,13 @@ class UserInfo:
         """
         return self.__get_cookie_str('cookie_token')
 
+    @property
+    def account_id(self) -> str:
+        """
+        获取account_id
+        """
+        return self.__get_cookie_str('account_id')
+
     def __get_cookie_str(self, target) -> str:
         """
         获取cookie字符串中相应的数据
@@ -131,6 +148,10 @@ class UserInfo:
         if result_str:
             return result_str.group(1)
         return ''
+
+    @channel_dict.setter
+    def channel_dict(self, value):
+        self._channel_dict = value
 
 
 class GameInfo:
@@ -352,3 +373,233 @@ class AddressInfo:
         获取联系人电话(含区号)
         """
         return self.connect_areacode + self.connect_mobile
+
+
+class ExchangeInfo:
+    """
+    兑换商品信息
+    """
+
+    def __init__(self, goods_info: dict):
+        """
+        初始化商品信息
+        """
+        self.mys_uid = goods_info['mys_uid']
+        self.goods_id = goods_info['goods_id']
+        self.goods_name = goods_info['goods_name']
+        self.exchange_num = goods_info['exchange_num']
+        self.game_id = goods_info['game_id'] if 'game_id' in goods_info else ''
+        self.address_id = goods_info['address_id'] if 'address_id' in goods_info else ''
+        self.exchange_time = goods_info['exchange_time']
+
+    @property
+    def mys_uid(self) -> str:
+        """
+        获取兑换账户ID
+        """
+        return self._mys_uid
+
+    @property
+    def goods_id(self) -> str:
+        """
+        获取商品ID
+        """
+        return self._goods_id
+
+    @property
+    def goods_name(self) -> str:
+        """
+        获取商品名称
+        """
+        return self._goods_name
+
+    @property
+    def exchange_num(self) -> str:
+        """
+        获取兑换数量
+        """
+        return self._exchange_num
+
+    @property
+    def game_id(self) -> str:
+        """
+        获取游戏ID
+        """
+        return self._game_id
+
+    @property
+    def exchange_time(self) -> str:
+        """
+        获取兑换时间
+        """
+        return self._exchange_time
+
+    @mys_uid.setter
+    def mys_uid(self, value):
+        self._mys_uid = value
+
+    @goods_id.setter
+    def goods_id(self, value):
+        self._goods_id = value
+
+    @goods_name.setter
+    def goods_name(self, value):
+        self._goods_name = value
+
+    @exchange_num.setter
+    def exchange_num(self, value):
+        self._exchange_num = value
+
+    @game_id.setter
+    def game_id(self, value):
+        self._game_id = value
+
+    @exchange_time.setter
+    def exchange_time(self, value):
+        self._exchange_time = value
+
+
+class GoodsInfo:
+    """
+    商品信息
+    """
+
+    def __init__(self):
+        """
+        初始化商品信息
+        """
+        self.goods_id = ''
+        self.goods_name = ''
+        self.goods_price = ''
+        self.goods_type = ''
+        self.game_biz = ''
+        self.goods_num = ''
+        self.goods_limit = ''
+        self.goods_rule = []
+        self.goods_time = ''
+
+    @property
+    def goods_id(self) -> str:
+        """
+        获取商品ID
+        """
+        return self._goods_id
+
+    @property
+    def goods_name(self) -> str:
+        """
+        获取商品名称
+        """
+        return self._goods_name
+
+    @property
+    def goods_price(self) -> str:
+        """
+        获取商品价格
+        """
+        return self._goods_price
+
+    @property
+    def game_biz(self) -> str:
+        """
+        获取商品游戏类型
+        """
+        return self._game_biz
+
+    @property
+    def goods_type(self) -> str:
+        """
+        获取商品类型
+        """
+        return self._goods_type
+
+    @property
+    def goods_num(self) -> str:
+        """
+        获取商品数量
+        """
+        return self._goods_num
+
+    @property
+    def goods_limit(self) -> str:
+        """
+        获取商品购买数量限制
+        """
+        return self._goods_limit
+
+    @property
+    def goods_rule(self) -> list:
+        """
+        获取商品规则
+        """
+        return self._goods_rule
+
+    @property
+    def goods_time(self) -> str:
+        """
+        获取商品兑换时间
+        """
+        return self._goods_time
+
+    @goods_id.setter
+    def goods_id(self, value):
+        """
+        设置商品ID
+        """
+        self._goods_id = value
+
+    @goods_name.setter
+    def goods_name(self, value):
+        """
+        设置商品名称
+        """
+        self._goods_name = value
+
+    @goods_price.setter
+    def goods_price(self, value):
+        """
+        设置商品价格
+        """
+        self._goods_price = value
+
+    @game_biz.setter
+    def game_biz(self, value):
+        """
+        设置商品游戏类型
+        """
+        self._game_biz = value
+
+    @goods_type.setter
+    def goods_type(self, value):
+        """
+        设置商品类型
+        """
+        self._goods_type = value
+
+    @goods_num.setter
+    def goods_num(self, value):
+        """
+        设置商品数量
+        """
+        self._goods_num = value
+
+    @goods_limit.setter
+    def goods_limit(self, value):
+        """
+        设置商品购买数量限制
+        """
+        self._goods_limit = value
+
+    @goods_rule.setter
+    def goods_rule(self, value):
+        """
+        设置商品规则
+        """
+        self._goods_rule = value
+
+    @goods_time.setter
+    def goods_time(self, value):
+        """
+        设置商品兑换时间
+        """
+        self._goods_time = value

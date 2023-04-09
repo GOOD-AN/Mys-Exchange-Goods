@@ -3,4 +3,4 @@ venv
 config.*
 log
 user_info
-goods_list.json
+exchange_list.json

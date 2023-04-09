@@ -15,9 +15,16 @@ import tools.global_var as gl
 from tools import md5_encode
 from .user_data import UserInfo, GameInfo, ClassEncoder
 
-MYS_SALT = "PVeGWIZACpxXZ1ibMVJPi9inCY4Nd4y2"
+MYS_SALT = "TsmyHpZg8gFAVKTtlPaL6YwMldzxZJxQ"
 MYS_SALT_TWO = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v"
-MYS_SALT_WEB = "yUZ3s0Sna1IrSNfk29Vo6vRapdOyqyhB"
+MYS_SALT_WEB = "osgT0DljLarYxgebPPHJFjdaxPfoiHGt"
+MYS_CHANNEL = {
+    "1": "崩坏3",
+    "2": "原神",
+    "3": "崩坏学园2",
+    "4": "未定事件簿",
+    "5": "米游社",
+}
 GAME_NAME = {
     "bh2_cn": "崩坏2",
     "bh3_cn": "崩坏3",
@@ -30,8 +37,9 @@ def get_new_ds(_b, _q):
     """
     生成请求 Header 里的 DS
     参考：
-    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/tools.py
-    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/setting.py
+    https://github.com/Womsxd/MihoyoBBSTools/blob/master/tools.py
+    https://github.com/Womsxd/MihoyoBBSTools/blob/master/setting.py
+    https://loliurl.club/383.html
     保留此函数以备后用
     """
     try:
@@ -54,8 +62,8 @@ def get_old_ds(web: bool):
     """
     生成请求 Header 里的 DS
     参考：
-    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/tools.py
-    https://github.com/Womsxd/AutoMihoyoBBS/blob/master/setting.py
+    https://github.com/Womsxd/MihoyoBBSTools/blob/master/tools.py
+    https://github.com/Womsxd/MihoyoBBSTools/blob/master/setting.py
     保留此函数以备后用
     """
     if web:
@@ -74,8 +82,8 @@ async def update_cookie(account: UserInfo):
     需要stoken
     """
     try:
-        if account.stoken == "":
-            print("缺少stoken")
+        if account.stoken == "" or account.mys_uid == "":
+            print("缺少stoken或账户ID，请重新获取cookie")
             return False
         update_cookie_url = gl.MI_URL + "/auth/api/getCookieAccountInfoBySToken"
         update_cookie_url_params = {
@@ -90,7 +98,7 @@ async def update_cookie(account: UserInfo):
             print(f"cookie获取出错，错误原因为: {update_cookie_url_req['message']}")
             return False
         account.cookie = re.sub(account.cookie_token, update_cookie_url_req['data']['cookie_token'], account.cookie)
-        with open(os.path.join(gl.DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
+        with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
             json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
         print("cookie更新成功")
         return True
@@ -158,28 +166,33 @@ def check_cookie() -> bool:
         return False
 
 
-def get_gift_detail(goods_id: int, get_type=''):
+async def get_goods_detail(goods_id: int, get_type=''):
     """
     按需要获取礼物详情
     """
     try:
-        gift_detail_url = gl.MI_URL + "/mall/v1/web/goods/detail"
-        gift_detail_params = {
+        goods_detail_url = gl.MI_URL + "/mall/v1/web/goods/detail"
+        goods_detail_params = {
             "app_id": 1,
             "point_sn": "myb",
             "goods_id": goods_id,
         }
-        gift_detail_req = httpx.get(gift_detail_url, params=gift_detail_params)
-        if gift_detail_req.status_code != 200:
+        async with httpx.AsyncClient() as client:
+            goods_detail_req = await client.get(goods_detail_url, params=goods_detail_params)
+        if goods_detail_req.status_code != 200:
             return False
-        gift_detail = gift_detail_req.json()["data"]
-        if gift_detail is None:
+        goods_detail = goods_detail_req.json()["data"]
+        if goods_detail is None:
             return False
+        return_info = [goods_detail['game_biz'], goods_detail['type']]
         if get_type == "biz":
-            return gift_detail['game_biz'], gift_detail['type']
-        if gift_detail['status'] == 'online':
-            return int(gift_detail['next_time'])
-        return int(gift_detail['sale_start_time'])
+            return return_info
+        return_info.append(goods_detail['rule'])
+        if goods_detail['status'] == 'online':
+            return_info.append(int(goods_detail['next_time']))
+            return return_info
+        return_info.append(int(goods_detail['sale_start_time']))
+        return return_info
     except KeyboardInterrupt:
         print("用户强制退出")
         input("按回车键继续")
@@ -195,6 +208,9 @@ def get_action_ticket(account: UserInfo):
     需要stoken与账户ID
     """
     try:
+        if account.stoken == "" or account.mys_uid == "":
+            print("缺少stoken或账户ID，请重新获取cookie")
+            return False
         action_ticket_url = gl.MI_URL + "/auth/api/getActionTicketBySToken"
         action_ticket_params = {"action_type": "game_role", "stoken": account.stoken, "uid": account.mys_uid}
         action_ticket_req = httpx.get(action_ticket_url, params=action_ticket_params)
