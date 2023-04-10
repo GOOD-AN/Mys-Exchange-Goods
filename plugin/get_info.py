@@ -249,9 +249,11 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                             goods_channel = now_goods.goods_rule[1][0].split(":")[0]
                             limit_level = now_goods.goods_rule[1][0].split(":")[1]
                             if account.channel_dict[goods_channel] < int(limit_level):
-                                print(f"商品{now_goods.goods_name}兑换要求频道{MYS_CHANNEL[goods_channel]}等级为: {limit_level}, "
-                                      f"当前频道等级为{account.channel_dict[goods_channel]}, 等级不足, 跳过兑换")
-                                print("请前往米游社APP完成任务提升等级, 如信息错误或需要更新频道信息, 请稍后使用更新频道信息功能")
+                                print(
+                                    f"商品{now_goods.goods_name}兑换要求频道{MYS_CHANNEL[goods_channel]}等级为: {limit_level}, "
+                                    f"当前频道等级为{account.channel_dict[goods_channel]}, 等级不足, 跳过兑换")
+                                print(
+                                    "请前往米游社APP完成任务提升等级, 如信息错误或需要更新频道信息, 请稍后使用更新频道信息功能")
                                 continue
                         now_goods_dict = {
                             "mys_uid": account.mys_uid,
@@ -271,7 +273,8 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                             if not select_account_game:
                                 print(f"商品{now_goods.goods_name}兑换要求{GAME_NAME[game_biz]}等级为: {limit_level}, "
                                       f"未找到符合条件的账号, 跳过兑换")
-                                print("请前往米游社APP绑定满足要求的账号, 如信息错误或需要更新绑定信息, 请稍后使用更新游戏账号信息功能")
+                                print(
+                                    "请前往米游社APP绑定满足要求的账号, 如信息错误或需要更新绑定信息, 请稍后使用更新游戏账号信息功能")
                                 continue
                         if now_goods.game_biz != 'bbs_cn' and now_goods.goods_type == 2:
                             account_game_num = 1
@@ -289,6 +292,29 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                                     f"(已跳过不符合最低等级限制的账号): ")
                                 if select_game_id.isdigit() and 0 < int(select_game_id) < account_game_num:
                                     now_goods_dict['game_id'] = select_account_game[int(select_game_id) - 1].game_uid
+                                    break
+                                else:
+                                    print("输入序号错误, 请重新输入")
+                        if now_goods.goods_type == 1 or now_goods.goods_type == 4:
+                            if not account.address_list:
+                                print(f"商品{now_goods.goods_name}为实物奖品, 但未找到收货地址, 跳过兑换")
+                                print(
+                                    "请前往米游社APP添加收货地址, 如信息错误或需要更新收货地址信息, 请稍后使用更新收货地址信息功能")
+                                continue
+                            address_num = 1
+                            for address in account.address_list:
+                                print("-" * 25)
+                                print(f"收货地址序号{address_num}")
+                                print(f"收货人: {address.connect_name}")
+                                print(f"联系电话: {address.connect_phone}")
+                                print(f"收货地址: {address.full_address}")
+                                address_num += 1
+                            while True:
+                                select_address_id = input(
+                                    f"因商品{now_goods.goods_name}为实物奖品, 请选择需要接收奖励的收货地址序号: ")
+                                if select_address_id.isdigit() and 0 < int(select_address_id) < address_num:
+                                    now_goods_dict['address_id'] = account.address_list[
+                                        int(select_address_id) - 1].address_id
                                     break
                                 else:
                                     print("输入序号错误, 请重新输入")
@@ -522,11 +548,19 @@ async def info_menu():
                 else:
                     print("获取账户信息失败")
             elif select_function == "2":
-                select_function = input("1. 仅获取商品\n2. 获取并设置商品: ")
-                if select_function == "1":
-                    await get_goods_list(account, "get")
-                elif select_function == "2":
-                    await get_goods_list(account, "set")
+                while True:
+                    os.system(gl.CLEAR_TYPE)
+                    select_function = input("1. 仅获取商品\n2. 获取并设置商品\n0. 返回上一级: ")
+                    if select_function == "1":
+                        await get_goods_list(account, "get")
+                    elif select_function == "2":
+                        await get_goods_list(account, "set")
+                    elif select_function == "0":
+                        break
+                    else:
+                        print("输入错误, 请重新输入")
+                        input("按回车键继续")
+                        continue
             elif select_function == "3":
                 now_point = await get_point(account)
                 if now_point:

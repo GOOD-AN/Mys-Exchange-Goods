@@ -1,10 +1,7 @@
 """
 米游社相关
 """
-import json
-import os.path
 import random
-import re
 import string
 import sys
 import time
@@ -13,7 +10,7 @@ import httpx
 
 import tools.global_var as gl
 from tools import md5_encode
-from .user_data import UserInfo, GameInfo, ClassEncoder
+from .user_data import UserInfo, GameInfo
 
 MYS_SALT = "TsmyHpZg8gFAVKTtlPaL6YwMldzxZJxQ"
 MYS_SALT_TWO = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v"

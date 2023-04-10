@@ -374,6 +374,13 @@ class AddressInfo:
         """
         return self.connect_areacode + self.connect_mobile
 
+    @property
+    def full_address(self) -> str:
+        """
+        获取完整地址
+        """
+        return self.province_name + self.city_name + self.county_name + self.addr_ext
+
 
 class ExchangeInfo:
     """
