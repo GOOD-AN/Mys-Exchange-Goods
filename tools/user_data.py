@@ -388,7 +388,7 @@ class ExchangeInfo:
         self.goods_id = goods_info['goods_id']
         self.goods_name = goods_info['goods_name']
         self.exchange_num = goods_info['exchange_num']
-        self.game_id = goods_info['game_id'] if 'game_id' in goods_info else ''
+        self.game_id = goods_info['game_id']
         self.address_id = goods_info['address_id'] if 'address_id' in goods_info else ''
         self.exchange_time = goods_info['exchange_time']
 

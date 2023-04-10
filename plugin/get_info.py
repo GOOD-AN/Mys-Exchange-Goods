@@ -139,6 +139,43 @@ async def get_cookie():
         return False
 
 
+async def get_channel_level(account: UserInfo):
+    """
+    获取频道等级
+    """
+    try:
+        if account.stoken == "":
+            print("缺少stoken，请重新获取cookie")
+            return False
+        channel_level_url = gl.BBS_URL + '/user/api/getUserFullInfo'
+        channel_level_headers = {
+            "Cookie": account.cookie
+        }
+        channel_level_params = {
+            "uid": account.mys_uid
+        }
+        async with httpx.AsyncClient() as client:
+            channel_level_req = await client.get(channel_level_url, headers=channel_level_headers,
+                                                 params=channel_level_params)
+        if channel_level_req.status_code != 200:
+            print(f"获取频道等级失败, 返回状态码为: {channel_level_req.status_code}")
+            return False
+        channel_level_data = channel_level_req.json()
+        if channel_level_data['retcode'] != 0:
+            print(f"获取频道等级失败, 错误信息为: {channel_level_data['message']}")
+            return False
+        channel_data_dict = {}
+        for channel_data in channel_level_data['data']['user_info']['level_exps']:
+            channel_data_dict[channel_data['game_id']] = channel_data['level']
+        return channel_data_dict
+    except KeyboardInterrupt:
+        print("用户强制退出")
+        sys.exit()
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
 async def get_address(account: UserInfo):
     """
     获取收货地址
@@ -292,11 +329,17 @@ async def get_goods_list(account: UserInfo):
                     "请输入需要抢购的商品序号, 以空格分开, 将忽略输入错误的序号(请注意现有米游币是否足够): ").rstrip(
                     ' ')))
                 if '' not in goods_id_in:
-                    goods_select_list = []
+                    goods_select_dict = {}
                     goods_point = 0
+                    exchange_file = open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "r", encoding="utf-8")
+                    old_data = json.load(exchange_file)
                     for goods_id in goods_id_in:
                         if goods_id.isdigit() and 0 < int(goods_id) < goods_num:
                             now_goods = goods_class_list[int(goods_id) - 1]
+                            if account.mys_uid + now_goods.goods_id in old_data:
+                                print(f"商品{now_goods.goods_name}已经在兑换列表中, 跳过")
+                                print("如需修改信息, 请稍后使用修改兑换信息功能修改")
+                                continue
                             exchange_num = 1
                             if int(now_goods.goods_limit) > 1:
                                 while True:
@@ -315,21 +358,26 @@ async def get_goods_list(account: UserInfo):
                                 "exchange_time": now_goods.goods_time
                             }
                             now_level = -1
+                            now_goods_dict["game_id"] = account.mys_uid
+                            # 需优化
                             if now_goods.game_biz != 'bbs_cn' and now_goods.goods_type == 2:
                                 for account_game in account.game_list:
                                     if account_game.game_biz == game_biz and account_game.game_level > now_level:
                                         now_level = account_game.game_level
                                         now_goods_dict["game_id"] = account_game.uid
                                 if now_level == -1:
-                                    print(f"当前账号未绑定{GAME_NAME[game_biz]}游戏, 请前往APP绑定后再进行兑换")
+                                    print(f"当前账号未绑定{GAME_NAME[game_biz]}游戏, 跳过兑换")
+                                    print("请前往APP绑定, 如信息错误或需要更新绑定信息, 请稍后使用更新游戏账号信息功能")
+                                    continue
                             if now_goods.goods_rule:
                                 for goods_rule in now_goods.goods_rule:
                                     if goods_rule['rule_id'] == 1:
                                         goods_channel = goods_rule['values'].split(":")[0]
                                         limit_level = goods_rule['values'].split(":")[1]
                                         if account.channel_dict[goods_channel] < limit_level:
-                                            print(f"当前商品兑换要求频道{MYS_CHANNEL[goods_channel]}等级为: {limit_level}, "
-                                                  f"当前频道等级为{account.channel_dict[goods_channel]}, 渠道不符, 跳过兑换")
+                                            print(
+                                                f"当前商品兑换要求频道{MYS_CHANNEL[goods_channel]}等级为: {limit_level}, "
+                                                f"当前频道等级为{account.channel_dict[goods_channel]}, 等级不足, 跳过兑换")
                                             print("请前往米游社APP完成任务提升等级, 如信息错误或需要更新绑定信息, "
                                                   "请稍后使用更新频道信息功能")
                                         continue
@@ -339,16 +387,14 @@ async def get_goods_list(account: UserInfo):
                                         print("请前往米游社APP绑定满足要求的账号, 如信息错误或需要更新绑定信息, "
                                               "请稍后使用更新游戏账号信息功能")
                                         continue
-                            goods_select_list.append(now_goods_dict)
+                            goods_select_dict[account.mys_uid + now_goods.goods_id] = now_goods_dict
                             goods_point += now_goods.goods_price * exchange_num
                     if user_point != -1 and user_point < goods_point:
                         print(f"当前米游币不足, 当前米游币数量: {user_point}, 所需米游币数量: {goods_point}")
                         choice = input("是否继续选择商品, 取消将返回重新选择(默认为Y)(Y/N): ")
                         if choice in ('n', 'N'):
                             continue
-                    with open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "r", encoding="utf-8") as f:
-                        old_data = json.load(f)
-                        old_data.extend(goods_select_list)
+                    old_data.update(goods_select_dict)
                     with open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "w", encoding="utf-8") as f:
                         json.dump(old_data, f, ensure_ascii=False, indent=4)
                     gl.EXCHANGE_DICT = old_data
@@ -378,9 +424,10 @@ async def get_user_info():
         new_user = UserInfo([mys_uid, user_cookie])
         user_info_json['mys_uid'] = mys_uid
         user_info_json['cookie'] = user_cookie
-        print("等待获取游戏账户与收货地址信息")
+        print("等待获取其他信息")
         game_info_list = await check_game_roles(new_user)
         address_list = await get_address(new_user)
+        channel_data_dict = await get_channel_level(new_user)
         user_info_json['game_list'] = []
         user_info_json['address_list'] = []
         if game_info_list:
@@ -389,6 +436,9 @@ async def get_user_info():
         if address_list:
             user_info_json['address_list'] = address_list
             new_user.address_list = address_list
+        if channel_data_dict:
+            user_info_json['channel_dict'] = channel_data_dict
+            new_user.channel_dict = channel_data_dict
         if user_info_json:
             if not os.path.exists(gl.USER_DATA_PATH):
                 os.makedirs(gl.USER_DATA_PATH)
@@ -424,7 +474,8 @@ async def info_menu():
 4. 更新Cookie
 5. 更新游戏账号信息
 6. 更新收货地址信息
-7. 重新选择账户
+7. 更新频道等级信息
+8. 重新选择账户
 0. 返回主菜单""")
             select_function = input("请输入选择功能的序号: ")
             os.system(gl.CLEAR_TYPE)
@@ -465,6 +516,13 @@ async def info_menu():
                 else:
                     print("未获取到收货地址信息")
             elif select_function == "7":
+                channel_data_dict = await get_channel_level(account)
+                if channel_data_dict:
+                    account.channel_dict = channel_data_dict
+                    with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
+                        json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
+                    print("更新频道等级信息成功")
+            elif select_function == "8":
                 if gl.USER_DICT:
                     account = select_user(gl.USER_DICT)
                 else:

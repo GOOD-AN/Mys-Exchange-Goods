@@ -24,6 +24,8 @@ MYS_CHANNEL = {
     "3": "崩坏学园2",
     "4": "未定事件簿",
     "5": "米游社",
+    "6": "崩坏：星穹铁道",
+    "8": "绝区零"
 }
 GAME_NAME = {
     "bh2_cn": "崩坏2",
@@ -187,7 +189,7 @@ async def get_goods_detail(goods_id: int, get_type=''):
         return_info = [goods_detail['game_biz'], goods_detail['type']]
         if get_type == "biz":
             return return_info
-        return_info.append(goods_detail['rule'])
+        return_info.append(goods_detail['rules'])
         if goods_detail['status'] == 'online':
             return_info.append(int(goods_detail['next_time']))
             return return_info
