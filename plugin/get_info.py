@@ -6,7 +6,6 @@ import os
 import re
 import sys
 import time
-from math import inf
 
 import httpx
 import pyperclip
@@ -235,8 +234,9 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                 goods_select_dict = {}
                 goods_point = 0
                 old_data = {}
-                if os.path.exists(os.path.join(gl.DATA_PATH, 'exchange_list.json')):
-                    with open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "r", encoding="utf-8") as exchange_file:
+                exchange_file_path = os.path.join(gl.DATA_PATH, 'exchange_list.json')
+                if os.path.exists(exchange_file_path):
+                    with open(exchange_file_path, "r", encoding="utf-8") as exchange_file:
                         old_data = json.load(exchange_file)
                 for goods_id in goods_id_in:
                     if goods_id.isdigit() and 0 < int(goods_id) < goods_num:
@@ -259,10 +259,12 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                             "mys_uid": account.mys_uid,
                             "goods_id": now_goods.goods_id,
                             "goods_name": now_goods.goods_name,
+                            "goods_type": now_goods.goods_type,
+                            "goods_biz": now_goods.game_biz,
                             "exchange_time": now_goods.goods_time,
                             "game_id": account.mys_uid
                         }
-                        limit_level = inf
+                        limit_level = -1
                         if 2 in now_goods.goods_rule:
                             limit_level = int(now_goods.goods_rule[2][0])
                         select_account_game = []
@@ -336,16 +338,21 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                     choice = input("是否继续选择商品, 取消将返回重新选择(默认为Y)(Y/N): ")
                     if choice in ('n', 'N'):
                         continue
+                if not goods_select_dict:
+                    print("所选商品均不符合兑换条件或重复添加, 请重新选择")
+                    input("按回车键继续")
+                    return True
                 old_data.update(goods_select_dict)
-                with open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "w", encoding="utf-8") as f:
+                with open(exchange_file_path, "w", encoding="utf-8") as f:
                     json.dump(old_data, f, ensure_ascii=False, indent=4)
                 gl.EXCHANGE_DICT = old_data
-                break
+                return True
             else:
                 print("未选择任何商品")
                 choice = input("是否重新选择商品(默认为Y)(Y/N): ")
                 if choice in ('n', 'N'):
                     break
+        return True
     except KeyboardInterrupt:
         print("用户强制退出")
         sys.exit()
@@ -462,10 +469,8 @@ async def get_goods_list(account: UserInfo, use_type: str = "set"):
                         break
             if not goods_class_list:
                 input("没有可兑换的商品(回车以返回)")
-                continue
             if use_type == "set":
                 await select_goods(account, goods_num, goods_class_list, user_point, game_biz)
-            return True
     except KeyboardInterrupt:
         print("用户强制退出")
         input("按回车键继续")
@@ -561,6 +566,7 @@ async def info_menu():
                         print("输入错误, 请重新输入")
                         input("按回车键继续")
                         continue
+                    break
             elif select_function == "3":
                 now_point = await get_point(account)
                 if now_point:

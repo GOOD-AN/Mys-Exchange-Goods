@@ -18,6 +18,7 @@ class ClassEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, obj)
 
 
+# 类创建需简化
 class UserInfo:
     """
     用户信息
@@ -394,6 +395,8 @@ class ExchangeInfo:
         self.mys_uid = goods_info['mys_uid']
         self.goods_id = goods_info['goods_id']
         self.goods_name = goods_info['goods_name']
+        self.goods_type = goods_info['goods_type']
+        self.goods_biz = goods_info['goods_biz']
         self.exchange_num = goods_info['exchange_num']
         self.game_id = goods_info['game_id']
         self.address_id = goods_info['address_id'] if 'address_id' in goods_info else ''
@@ -419,6 +422,20 @@ class ExchangeInfo:
         获取商品名称
         """
         return self._goods_name
+
+    @property
+    def goods_type(self) -> str:
+        """
+        获取商品类型
+        """
+        return self._goods_type
+
+    @property
+    def goods_biz(self) -> str:
+        """
+        获取商品所在区服
+        """
+        return self._goods_biz
 
     @property
     def exchange_num(self) -> str:
@@ -464,6 +481,14 @@ class ExchangeInfo:
     @exchange_time.setter
     def exchange_time(self, value):
         self._exchange_time = value
+
+    @goods_type.setter
+    def goods_type(self, value):
+        self._goods_type = value
+
+    @goods_biz.setter
+    def goods_biz(self, value):
+        self._goods_biz = value
 
 
 class GoodsInfo:
