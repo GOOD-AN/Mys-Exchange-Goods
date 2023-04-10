@@ -99,11 +99,7 @@ async def update_cookie(account: UserInfo):
         if update_cookie_url_req['data'] is None:
             print(f"cookie获取出错，错误原因为: {update_cookie_url_req['message']}")
             return False
-        account.cookie = re.sub(account.cookie_token, update_cookie_url_req['data']['cookie_token'], account.cookie)
-        with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
-            json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
-        print("cookie更新成功")
-        return True
+        return update_cookie_url_req['data']['cookie_token']
     except KeyboardInterrupt:
         print("用户强制退出")
         input("按回车键继续")
