@@ -1,18 +1,20 @@
 """
 通用函数
 """
+import asyncio
 import json
-from hashlib import md5
 import os
 import platform
-from configparser import ConfigParser
 import sys
 import time
+from configparser import ConfigParser
+from hashlib import md5
 from shutil import copyfile
-from ntplib import NTPClient
-import httpx
 
-import tools.global_var as gl
+import httpx
+from ntplib import NTPClient
+
+from . import global_var as gl
 from .user_data import GameInfo, AddressInfo, UserInfo
 
 CHECK_UPDATE_URL_LIST = [
@@ -44,7 +46,7 @@ def load_config():
     """
     加载配置文件
     """
-    config = ConfigParser()
+    config_data = ConfigParser()
     try:
         config_path = os.path.join(gl.CONFIG_PATH, 'config.ini')
         default_config_path = os.path.join(gl.CONFIG_PATH, 'default_config.ini')
@@ -54,8 +56,8 @@ def load_config():
             sys.exit()
         if not os.path.exists(config_path) and os.path.exists(default_config_path):
             copyfile(default_config_path, config_path)
-        config.read_file(open(config_path, "r", encoding="utf-8"))
-        return config
+        config_data.read_file(open(config_path, "r", encoding="utf-8"))
+        return config_data
     except KeyboardInterrupt:
         print("用户强制退出")
         input("按回车键继续")
@@ -66,7 +68,7 @@ def load_config():
         sys.exit()
 
 
-def write_config_file(section, key, value):
+async def write_config_file(section, key, value):
     """
     写入配置文件
     """
@@ -81,14 +83,14 @@ def write_config_file(section, key, value):
             gl.MI_COOKIE = value
     except KeyboardInterrupt:
         print("用户强制退出")
-        input("按回车键继续")
+        await async_input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
+        await async_input("按回车键继续")
 
 
-def compare_version(old_version, new_version):
+async def compare_version(old_version, new_version):
     """
     版本号比较
     """
@@ -101,15 +103,15 @@ def compare_version(old_version, new_version):
         return 0
     except KeyboardInterrupt:
         print("用户强制退出")
-        input("按回车键继续")
+        await async_input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
+        await async_input("按回车键继续")
         sys.exit()
 
 
-def check_update(main_version):
+async def check_update(main_version):
     """
     检查更新
     """
@@ -123,8 +125,10 @@ def check_update(main_version):
             for check_update_url in CHECK_UPDATE_URL_LIST:
                 check_url = check_update_url + "update_log.json"
                 try:
-                    check_info = httpx.get(check_url, timeout=5).json()
-                    break
+                    async with httpx.AsyncClient() as client:
+                        check_info = await client.get(check_url, timeout=5)
+                        check_info = check_info.json()
+                        break
                 except httpx.HTTPError:
                     continue
             if not check_info:
@@ -149,28 +153,28 @@ def check_update(main_version):
                         print("=" * 50)
                 if compare_version(remote_least_version, local_version) == 1:
                     print("版本过低, 程序将停止运行")
-                    print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
+                    print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
                     time.sleep(3)
                     sys.exit()
-                print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
+                print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
                 return True
         else:
             print(
                 f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
-            print("项目地址: https://github.com/GOOD-AN/mys_exch_goods")
+            print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
             return True
         print("当前已是最新版本")
         return True
     except KeyboardInterrupt:
         print("用户强制退出")
-        input("按回车键继续")
+        await async_input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
 
 
-def get_time(ntp_enable, ntp_server):
+async def get_time(ntp_enable, ntp_server):
     """
     获取当前时间
     """
@@ -180,14 +184,14 @@ def get_time(ntp_enable, ntp_server):
         return NTPClient().request(ntp_server).tx_time
     except KeyboardInterrupt:
         print("用户强制退出")
-        input("按回车键继续")
+        await async_input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"网络时间获取失败, 原因为{err}, 转为本地时间")
         return time.time()
 
 
-def md5_encode(text):
+async def md5_encode(text):
     """
     md5加密
     """
@@ -195,6 +199,42 @@ def md5_encode(text):
         md5_str = md5()
         md5_str.update(text.encode('utf-8'))
         return md5_str.hexdigest()
+    except KeyboardInterrupt:
+        print("用户强制退出")
+        await async_input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        await async_input("按回车键继续")
+        sys.exit()
+
+
+def load_user_data():
+    """
+    加载用户数据
+    """
+    try:
+        user_data_dict = {}
+        if os.path.exists(gl.USER_DATA_PATH):
+            user_data_file_list = os.listdir(gl.USER_DATA_PATH)
+            for user_data_file in user_data_file_list:
+                with open(os.path.join(gl.USER_DATA_PATH, user_data_file), 'r', encoding='utf-8') as f:
+                    try:
+                        user_data = json.load(f)
+                        user_game_list = []
+                        user_address_list = []
+                        for user_game in user_data['game_list']:
+                            user_game_list.append(GameInfo(user_game))
+                        user_data['game_list'] = user_game_list
+                        for user_address in user_data['address_list']:
+                            user_address_list.append(AddressInfo(user_address))
+                        user_data['address_list'] = user_address_list
+                        user_data_dict[user_data['mys_uid']] = UserInfo(user_data)
+                    except (json.decoder.JSONDecodeError, KeyError) as err:
+                        print(f"用户数据{user_data_file}解析失败, 跳过, ", end='')
+                        print(f"错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+                        continue
+        return user_data_dict
     except KeyboardInterrupt:
         print("用户强制退出")
         input("按回车键继续")
@@ -217,27 +257,12 @@ def init_config():
         # logging_config.log_config['handlers']['standard_file']['filename'] = log_path
         # logging.config.dictConfig(logging_config.log_config)
         # gl.standard_log = logging.getLogger('standard_logger')
-        gl.CONFIG_PATH = os.path.join(os.path.dirname(sys.argv[0]), "config")
-        gl.INI_CONFIG = load_config()
-        gl.CLEAR_TYPE = check_plat()
+        gl.CONFIG_PATH = os.path.join(gl.BASIC_PATH, "config")
         gl.DATA_PATH = os.path.join(gl.BASIC_PATH, 'data')
         gl.USER_DATA_PATH = os.path.join(gl.DATA_PATH, 'user_info')
-        user_data_dict = {}
-        if os.path.exists(gl.USER_DATA_PATH):
-            user_data_file_list = os.listdir(gl.USER_DATA_PATH)
-            for user_data_file in user_data_file_list:
-                with open(os.path.join(gl.USER_DATA_PATH, user_data_file), 'r', encoding='utf-8') as f:
-                    user_data = json.load(f)
-                    user_game_list = []
-                    user_address_list = []
-                    for user_game in user_data['game_list']:
-                        user_game_list.append(GameInfo(user_game))
-                    user_data['game_list'] = user_game_list
-                    for user_address in user_data['address_list']:
-                        user_address_list.append(AddressInfo(user_address))
-                    user_data['address_list'] = user_address_list
-                    user_data_dict[user_data['mys_uid']] = UserInfo(user_data)
-        gl.USER_DICT = user_data_dict
+        gl.INI_CONFIG = load_config()
+        gl.CLEAR_TYPE = check_plat()
+        gl.USER_DICT = load_user_data()
         return True
     except KeyboardInterrupt:
         print("用户强制退出")
@@ -247,3 +272,14 @@ def init_config():
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         sys.exit()
+
+
+async def async_input(prompt):
+    """
+    异步输入
+    """
+    try:
+        return await asyncio.to_thread(input, prompt)
+    except AttributeError:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, input, prompt)

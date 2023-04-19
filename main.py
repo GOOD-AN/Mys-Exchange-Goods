@@ -8,9 +8,8 @@ import sys
 import time
 from getpass import getuser
 
-import tools.global_var as gl
-from plugin import info_menu, goods_main
-from tools import check_update, init_config
+import myseg.global_var as gl
+from myseg import async_input, check_update, init_config, info_menu
 
 MAIN_VERSION = '2.0.5'
 MESSAGE = f"""\
@@ -25,7 +24,7 @@ LICENSE    : MIT
 """
 
 
-def main_menu():
+async def main_menu():
     """
     开始任务
     """
@@ -34,7 +33,7 @@ def main_menu():
         #     print("Cookie失效, 尝试更新")
         #     if not update_cookie():
         #         print("Cookie更新失败, 可能需要重新获取cookie")
-        #         input("按回车键继续")
+        #         await async_input("按回车键继续")
         while True:
             os.system(gl.CLEAR_TYPE)
             print("""主菜单
@@ -44,33 +43,32 @@ def main_menu():
 3. 其他设置
 4. 检查更新
 0. 退出""")
-            select_function = input("请输入选择功能的序号: ")
+            select_function = await async_input("请输入选择功能的序号: ")
             os.system(gl.CLEAR_TYPE)
             if select_function == "1":
-                asyncio.run(info_menu())
+                await info_menu()
             elif select_function == "2":
-                print("暂未开放")
-                # asyncio.run(goods_main())
+                print("功能调整")
             elif select_function == "3":
                 print("暂未开放")
             elif select_function == "4":
-                check_update(MAIN_VERSION)
-                input("按回车键继续")
+                await check_update(MAIN_VERSION)
+                await async_input("按回车键继续")
             elif select_function == "0":
                 sys.exit()
             else:
-                input("输入有误，请重新输入(回车以返回)")
-            input("按回车键继续")
+                await async_input("输入有误，请重新输入(回车以返回)")
+            await async_input("按回车键继续")
     except KeyboardInterrupt:
         print("用户强制退出")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
+        await async_input("按回车键继续")
         sys.exit()
 
 
-def start_info():
+async def start_info():
     """
     开始输出信息
     """
@@ -99,7 +97,7 @@ def start_info():
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
+        await async_input("按回车键继续")
         return False
 
 
@@ -108,8 +106,8 @@ if __name__ == '__main__':
         # start_info()
         init_config()
         # check_update(MAIN_VERSION)
-        # input("按回车键继续")
-        main_menu()
+        input("按回车键继续")
+        asyncio.run(main_menu())
     except KeyboardInterrupt:
         print("用户强制退出")
         sys.exit()

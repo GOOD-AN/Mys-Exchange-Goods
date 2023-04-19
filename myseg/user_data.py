@@ -3,6 +3,7 @@
 """
 import json
 import re
+import time
 from typing import Union
 
 
@@ -388,7 +389,7 @@ class ExchangeInfo:
     兑换商品信息
     """
 
-    def __init__(self, goods_info: dict):
+    def __init__(self, goods_info: dict, goods_detail):
         """
         初始化商品信息
         """
@@ -399,8 +400,19 @@ class ExchangeInfo:
         self.goods_biz = goods_info['goods_biz']
         self.exchange_num = goods_info['exchange_num']
         self.game_id = goods_info['game_id']
+        self.game_region = goods_info['game_region'] if 'game_region' in goods_info else ''
         self.address_id = goods_info['address_id'] if 'address_id' in goods_info else ''
         self.exchange_time = goods_info['exchange_time']
+        now_time = int(time.time())
+        if self.exchange_time < now_time:
+            raise ValueError(f"商品 {self.goods_name} 兑换时间已过, 已自动跳过")
+        if self.goods_biz != "bbs_cn" and self.goods_type == 2 \
+                and (self.mys_uid == self.game_id or self.game_region == ''):
+            raise ValueError(f"商品 {self.goods_name} 游戏账户信息设置错误, 已自动跳过")
+        if (self.goods_type == 1 or self.goods_type == 4) and self.address_id == '':
+            raise ValueError(f"商品 {self.goods_name} 为实物, 但收货地址不存在, 已自动跳过")
+        if goods_detail == -1:
+            raise ValueError(f"商品 {self.goods_name} 已售罄, 已自动跳过")
 
     @property
     def mys_uid(self) -> str:
@@ -424,7 +436,7 @@ class ExchangeInfo:
         return self._goods_name
 
     @property
-    def goods_type(self) -> str:
+    def goods_type(self) -> int:
         """
         获取商品类型
         """
@@ -438,7 +450,7 @@ class ExchangeInfo:
         return self._goods_biz
 
     @property
-    def exchange_num(self) -> str:
+    def exchange_num(self) -> int:
         """
         获取兑换数量
         """
@@ -452,7 +464,14 @@ class ExchangeInfo:
         return self._game_id
 
     @property
-    def exchange_time(self) -> str:
+    def game_region(self) -> str:
+        """
+        获取游戏区服
+        """
+        return self._game_region
+
+    @property
+    def exchange_time(self) -> int:
         """
         获取兑换时间
         """
@@ -489,6 +508,10 @@ class ExchangeInfo:
     @goods_biz.setter
     def goods_biz(self, value):
         self._goods_biz = value
+
+    @game_region.setter
+    def game_region(self, value):
+        self._game_region = value
 
 
 class GoodsInfo:
