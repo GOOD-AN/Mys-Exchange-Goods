@@ -11,10 +11,10 @@
 ## 🖨️ 相关文档
 在使用前请务必阅读文档，若有疑问，请先查阅文档或者Issues里是否有相同的问题
 
-* [使用说明](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/运行方法)
-* [配置说明](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/配置文件说明)
+* 使用说明 [DOCS](./docs/运行方法.md) 或 [WIKI](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/运行方法)
+* 配置说明 [DOCS](./docs/配置文件说明.md) 或 [WIKI](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/配置文件说明)
 * [更新日志](./docs/CHANGELOG.md)
-* [常见问题](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/FAQ)
+* 常见问题 [DOCS](./docs/FAQ.md) 或 [WIKI](https://github.com/GOOD-AN/Mys-Exchange-Goods/wiki/FAQ)
 * [关于项目](./docs/ABOUT.md)
 
 ## 💬 交流反馈

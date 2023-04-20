@@ -11,7 +11,7 @@ from getpass import getuser
 import myseg.global_var as gl
 from myseg import async_input, check_update, init_config, info_menu, init_exchange, wait_tasks
 
-MAIN_VERSION = '2.0.5'
+MAIN_VERSION = '3.0.0'
 MESSAGE = f"""\
 ===========================================
 |        Mys Exchange Goods v{MAIN_VERSION:13s}|
