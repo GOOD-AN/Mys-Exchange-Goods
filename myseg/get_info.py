@@ -6,11 +6,13 @@ import os
 import re
 import sys
 import time
+from datetime import datetime
 
 import httpx
 import pyperclip
 
-from . import global_var as gl, async_input
+from . import global_var as gl, async_input, scheduler
+from .exchange_goods import run_task
 from .mi_tool import GAME_NAME, MYS_CHANNEL
 from .mi_tool import update_cookie, get_goods_detail, check_game_roles, get_point
 from .user_data import UserInfo, AddressInfo, ClassEncoder, GoodsInfo
@@ -365,6 +367,10 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                 old_data.update(goods_select_dict)
                 with open(exchange_file_path, "w", encoding="utf-8") as f:
                     json.dump(old_data, f, ensure_ascii=False, indent=4)
+                for task in goods_select_dict.values():
+                    schedule_id = task['mys_uid'] + task['goods_id']
+                    scheduler.add_job(id=schedule_id, trigger='date', func=run_task, args=[task],
+                                      next_run_time=datetime.fromtimestamp(task['exchange_time']))
                 print("商品添加成功")
                 await async_input("按回车键继续")
                 return True

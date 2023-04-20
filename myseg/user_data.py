@@ -393,7 +393,7 @@ class ExchangeInfo:
     兑换商品信息
     """
 
-    def __init__(self, goods_info: dict, goods_detail):
+    def __init__(self, goods_info: dict, goods_detail=None):
         """
         初始化商品信息
         """
