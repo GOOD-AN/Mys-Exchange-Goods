@@ -602,11 +602,9 @@ async def info_menu():
                     print("未获取到米游币数量")
             # 待优化
             elif select_function == "4":
-                new_cookie_token = await update_cookie(account)
-                if new_cookie_token:
-                    account.cookie = re.sub(account.cookie_token, new_cookie_token, account.cookie)
-                    with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
-                        json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
+                update_result = await update_cookie(account)
+                if update_result:
+                    account.cookie = update_result
                     print("cookie更新成功")
             elif select_function == "5":
                 game_info_list = await check_game_roles(account)

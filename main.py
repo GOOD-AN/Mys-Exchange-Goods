@@ -10,6 +10,7 @@ from getpass import getuser
 
 import myseg.global_var as gl
 from myseg import async_input, check_update, init_config, info_menu, init_exchange, wait_tasks
+from myseg import check_cookie, update_cookie
 
 MAIN_VERSION = '3.0.0'
 MESSAGE = f"""\
@@ -24,16 +25,54 @@ LICENSE    : MIT
 """
 
 
+async def check_all_cookie():
+    """
+    检查所有cookie是否有效
+    """
+    try:
+        if not gl.USER_DICT or not gl.INI_CONFIG.getboolean('update_setting', 'check_account_enable'):
+            return True
+        print("检查所有cookie是否有效...")
+        expires_account = []
+        for account in gl.USER_DICT.values():
+            check_cookie_result = await check_cookie(account)
+            if check_cookie_result == -1:
+                print(f"账号: {account['mys_uid']} 检查失败")
+            elif check_cookie_result == 0:
+                expires_account.append(account)
+        if expires_account:
+            if gl.INI_CONFIG.getboolean('update_setting', 'update_account_enable'):
+                print("检测到有账号cookie过期, 尝试自动更新cookie")
+                for account in expires_account:
+                    update_result = await update_cookie(account)
+                    if update_result:
+                        gl.USER_DICT[account.mys_uid].cookie = update_result
+                    else:
+                        print(f"账号: {account.mys_uid} 更新cookie失败")
+                print("自动更新cookie完成")
+            else:
+                for account in expires_account:
+                    print(f"账号: {account.mys_uid} cookie已过期")
+                print("自动更新已配置为关闭, 请手动更新cookie")
+        else:
+            print("所有账号cookie有效")
+        input("按回车键继续")
+        return True
+    except KeyboardInterrupt:
+        print("用户强制退出")
+        sys.exit()
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        input("按回车键继续")
+        return False
+
+
 async def main_menu():
     """
     开始任务
     """
     try:
-        # if gl.MI_COOKIE and not check_cookie():
-        #     print("Cookie失效, 尝试更新")
-        #     if not update_cookie():
-        #         print("Cookie更新失败, 可能需要重新获取cookie")
-        #         await async_input("按回车键继续")
+        await check_all_cookie()
         print("初始化定时任务...")
         await init_exchange()
         while True:

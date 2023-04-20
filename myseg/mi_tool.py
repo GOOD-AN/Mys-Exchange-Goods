@@ -1,7 +1,10 @@
 """
 米游社相关
 """
+import json
+import os
 import random
+import re
 import string
 import sys
 import time
@@ -10,7 +13,7 @@ import httpx
 
 from . import global_var as gl
 from .com_tool import md5_encode, async_input
-from .user_data import UserInfo, GameInfo
+from .user_data import UserInfo, GameInfo, ClassEncoder
 
 MYS_SALT = "TsmyHpZg8gFAVKTtlPaL6YwMldzxZJxQ"
 MYS_SALT_TWO = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v"
@@ -96,7 +99,11 @@ async def update_cookie(account: UserInfo):
         if update_cookie_url_req['data'] is None:
             print(f"cookie获取出错，错误原因为: {update_cookie_url_req['message']}")
             return False
-        return update_cookie_url_req['data']['cookie_token']
+        account.cookie = re.sub(account.cookie_token, update_cookie_url_req['data']['cookie_token'], account.cookie)
+        with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w',
+                  encoding='utf-8') as f:
+            json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
+        return account.cookie
     except KeyboardInterrupt:
         print("用户强制退出")
         await async_input("按回车键继续")
@@ -134,7 +141,7 @@ async def get_point(account: UserInfo):
         return False
 
 
-async def check_cookie(account: UserInfo) -> bool:
+async def check_cookie(account: UserInfo) -> int:
     """
     检查cookie是否过期
     """
@@ -147,19 +154,19 @@ async def check_cookie(account: UserInfo) -> bool:
             check_cookie_req = await client.get(check_cookie_url, headers=check_cookie_hearders)
         if check_cookie_req.status_code != 200:
             print(f"检查Cookie失败, 返回状态码为{str(check_cookie_req.status_code)}")
-            return False
+            return -1
         check_cookie_req = check_cookie_req.json()
         if check_cookie_req['retcode'] != 0:
             print("Cookie已过期")
-            return False
-        return True
+            return 0
+        return 1
     except KeyboardInterrupt:
         print("用户强制退出")
         await async_input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        return False
+        return -1
 
 
 # 需优化
