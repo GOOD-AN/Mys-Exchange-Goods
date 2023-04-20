@@ -9,7 +9,7 @@ import time
 from getpass import getuser
 
 import myseg.global_var as gl
-from myseg import async_input, check_update, init_config, info_menu
+from myseg import async_input, check_update, init_config, info_menu, init_exchange, wait_tasks
 
 MAIN_VERSION = '2.0.5'
 MESSAGE = f"""\
@@ -34,12 +34,14 @@ async def main_menu():
         #     if not update_cookie():
         #         print("Cookie更新失败, 可能需要重新获取cookie")
         #         await async_input("按回车键继续")
+        print("初始化定时任务...")
+        await init_exchange()
         while True:
             os.system(gl.CLEAR_TYPE)
             print("""主菜单
 选择功能:
 1. 获取信息
-2. 兑换商品
+2. 等待商品兑换
 3. 其他设置
 4. 检查更新
 0. 退出""")
@@ -48,12 +50,11 @@ async def main_menu():
             if select_function == "1":
                 await info_menu()
             elif select_function == "2":
-                print("功能调整")
+                await wait_tasks()
             elif select_function == "3":
                 print("暂未开放")
             elif select_function == "4":
                 await check_update(MAIN_VERSION)
-                await async_input("按回车键继续")
             elif select_function == "0":
                 sys.exit()
             else:
@@ -68,7 +69,7 @@ async def main_menu():
         sys.exit()
 
 
-async def start_info():
+def start_info():
     """
     开始输出信息
     """
@@ -97,15 +98,16 @@ async def start_info():
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         return False
 
 
 if __name__ == '__main__':
     try:
-        # start_info()
+        start_info()
         init_config()
-        # check_update(MAIN_VERSION)
+        if gl.INI_CONFIG.getboolean("update_setting", "check_enable"):
+            asyncio.run(check_update(MAIN_VERSION))
         input("按回车键继续")
         asyncio.run(main_menu())
     except KeyboardInterrupt:

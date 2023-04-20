@@ -12,7 +12,6 @@ from hashlib import md5
 from shutil import copyfile
 
 import httpx
-from ntplib import NTPClient
 
 from . import global_var as gl
 from .user_data import GameInfo, AddressInfo, UserInfo
@@ -103,12 +102,12 @@ async def compare_version(old_version, new_version):
         return 0
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         await async_input("按回车键继续")
-        sys.exit()
+        return False
 
 
 async def check_update(main_version):
@@ -128,8 +127,8 @@ async def check_update(main_version):
                     async with httpx.AsyncClient() as client:
                         check_info = await client.get(check_url, timeout=5)
                         check_info = check_info.json()
-                        break
-                except httpx.HTTPError:
+                    break
+                except (httpx.HTTPError, json.JSONDecodeError):
                     continue
             if not check_info:
                 print("检查更新失败")
@@ -137,21 +136,21 @@ async def check_update(main_version):
             remote_least_version = check_info['least_version'].split('.')
             local_version = main_version.split('.')
             remote_last_version = check_info['last_version'].split('.')
-            if compare_version(local_version, remote_last_version) == -1:
+            if await compare_version(local_version, remote_last_version) == -1:
                 remote_update_log_list = check_info['update_log']
                 print(f"当前程序版本为v{main_version}, 最新程序版本为v{check_info['last_version']}")
                 print("当前非最新版本，建议更新\n")
                 print("更新概览: ")
                 print("=" * 50)
                 for update_log in remote_update_log_list:
-                    if compare_version(update_log['version'].split('.'), local_version) == 1:
+                    if await compare_version(update_log['version'].split('.'), local_version) == 1:
                         print("版本: ", f"{update_log['version']}".center(12))
                         print(f"更新时间: {update_log['update_time']}")
                         print(f"更新说明: {update_log['update_content'][0]}")
                         for content in update_log['update_content'][1:]:
                             print(content.rjust(20))
                         print("=" * 50)
-                if compare_version(remote_least_version, local_version) == 1:
+                if await compare_version(remote_least_version, local_version) == 1:
                     print("版本过低, 程序将停止运行")
                     print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
                     time.sleep(3)
@@ -167,28 +166,11 @@ async def check_update(main_version):
         return True
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
-
-
-async def get_time(ntp_enable, ntp_server):
-    """
-    获取当前时间
-    """
-    try:
-        if not ntp_enable:
-            return time.time()
-        return NTPClient().request(ntp_server).tx_time
-    except KeyboardInterrupt:
-        print("用户强制退出")
-        await async_input("按回车键继续")
-        sys.exit()
-    except Exception as err:
-        print(f"网络时间获取失败, 原因为{err}, 转为本地时间")
-        return time.time()
 
 
 async def md5_encode(text):
@@ -274,7 +256,7 @@ def init_config():
         sys.exit()
 
 
-async def async_input(prompt):
+async def async_input(prompt=''):
     """
     异步输入
     """

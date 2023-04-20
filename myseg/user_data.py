@@ -6,6 +6,10 @@ import re
 import time
 from typing import Union
 
+from ntplib import NTPClient
+
+from . import global_var as gl
+
 
 class ClassEncoder(json.JSONEncoder):
     """
@@ -403,7 +407,16 @@ class ExchangeInfo:
         self.game_region = goods_info['game_region'] if 'game_region' in goods_info else ''
         self.address_id = goods_info['address_id'] if 'address_id' in goods_info else ''
         self.exchange_time = goods_info['exchange_time']
-        now_time = int(time.time())
+        self.__goods_detail = goods_detail
+        self.__ntp_enable = gl.INI_CONFIG.getboolean('ntp', 'enable')
+        self.__ntp_server = gl.INI_CONFIG.get('ntp', 'ntp_server')
+        self.__check_info()
+
+    def __check_info(self):
+        """
+        检查商品兑换信息
+        """
+        now_time = int(self.__get_time(self.__ntp_enable, self.__ntp_server))
         if self.exchange_time < now_time:
             raise ValueError(f"商品 {self.goods_name} 兑换时间已过, 已自动跳过")
         if self.goods_biz != "bbs_cn" and self.goods_type == 2 \
@@ -411,8 +424,21 @@ class ExchangeInfo:
             raise ValueError(f"商品 {self.goods_name} 游戏账户信息设置错误, 已自动跳过")
         if (self.goods_type == 1 or self.goods_type == 4) and self.address_id == '':
             raise ValueError(f"商品 {self.goods_name} 为实物, 但收货地址不存在, 已自动跳过")
-        if goods_detail == -1:
+        if self.__goods_detail == -1:
             raise ValueError(f"商品 {self.goods_name} 已售罄, 已自动跳过")
+
+    @staticmethod
+    def __get_time(ntp_enable, ntp_server) -> float:
+        """
+        获取当前时间
+        """
+        try:
+            if not ntp_enable:
+                return time.time()
+            return NTPClient().request(ntp_server).tx_time
+        except Exception as err:
+            print(f"网络时间获取失败, 原因为{err}, 转为本地时间")
+            return time.time()
 
     @property
     def mys_uid(self) -> str:
