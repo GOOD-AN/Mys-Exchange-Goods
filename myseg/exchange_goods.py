@@ -133,7 +133,7 @@ async def init_task():
                 goods_data_dict = json.load(exchange_file)
             except json.decoder.JSONDecodeError:
                 return False
-        exchange_data_list = []
+        exchange_data_dict = {}
         error_list = []
         print("将会删除所有无法兑换的商品")
         for goods_key, goods_data in goods_data_dict.items():
@@ -141,7 +141,7 @@ async def init_task():
             if not goods_detail:
                 continue
             try:
-                exchange_data_list.append(ExchangeInfo(goods_data, goods_detail))
+                exchange_data_dict[goods_key] = ExchangeInfo(goods_data, goods_detail)
             # 输出到日志
             except KeyError:
                 continue
@@ -153,7 +153,7 @@ async def init_task():
                 del goods_data_dict[error_key]
             with open(exchange_file_path, "w", encoding="utf-8") as exchange_file:
                 json.dump(goods_data_dict, exchange_file, ensure_ascii=False, indent=4)
-        return exchange_data_list
+        return exchange_data_dict
     except KeyboardInterrupt:
         print("用户强制退出")
         sys.exit()
@@ -170,13 +170,12 @@ async def init_exchange(flag=True):
         scheduler.start()
         if not flag:
             return True
-        task_list = await init_task()
-        if not task_list:
+        task_dict = await init_task()
+        if not task_dict:
             return True
-        for task in task_list:
-            schedule_id = task.mys_uid + task.goods_id
-            scheduler.add_job(id=schedule_id, trigger='date', func=run_task, args=[task],
-                              next_run_time=datetime.fromtimestamp(task.exchange_time))
+        for task_key, task_value in task_dict.items():
+            scheduler.add_job(id=task_key, trigger='date', func=run_task, args=[task_value],
+                              next_run_time=datetime.fromtimestamp(task_value.exchange_time))
         return True
     except KeyboardInterrupt:
         print("用户强制退出")
@@ -191,6 +190,10 @@ async def wait_tasks():
     等待任务完成
     """
     try:
+        if not scheduler.get_jobs():
+            print("没有任务需要执行")
+            await async_input("按回车键返回主菜单")
+            return True
         print("正在等待任务完成")
         await async_input("按回车键返回主菜单")
         return True

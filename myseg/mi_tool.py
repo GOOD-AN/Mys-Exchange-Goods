@@ -184,10 +184,10 @@ async def get_goods_detail(goods_id, get_type=''):
         async with httpx.AsyncClient() as client:
             goods_detail_req = await client.get(goods_detail_url, params=goods_detail_params)
         if goods_detail_req.status_code != 200:
-            return False
+            return [False, False]
         goods_detail = goods_detail_req.json()["data"]
         if goods_detail is None:
-            return False
+            return [False, False]
         if get_type == "status":
             if not goods_detail['unlimit'] and goods_detail['next_num'] == 0 and goods_detail['total'] == 0:
                 return [-1, goods_detail['goods_name']]

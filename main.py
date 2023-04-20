@@ -90,6 +90,7 @@ async def main_menu():
                 await info_menu()
             elif select_function == "2":
                 await wait_tasks()
+                continue
             elif select_function == "3":
                 print("暂未开放")
             elif select_function == "4":
@@ -98,6 +99,7 @@ async def main_menu():
                 sys.exit()
             else:
                 await async_input("输入有误，请重新输入(回车以返回)")
+                continue
             await async_input("按回车键继续")
     except KeyboardInterrupt:
         print("用户强制退出")

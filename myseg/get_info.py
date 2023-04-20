@@ -225,6 +225,105 @@ async def get_address(account: UserInfo):
         return False
 
 
+async def get_exchange_data():
+    """
+    获取兑换数据
+    """
+    try:
+        exchange_file_path = os.path.join(gl.DATA_PATH, 'exchange_list.json')
+        if os.path.exists(exchange_file_path):
+            with open(exchange_file_path, "r", encoding="utf-8") as exchange_file:
+                try:
+                    old_data = json.load(exchange_file)
+                except json.decoder.JSONDecodeError:
+                    old_data = {}
+                    print("数据格式错误, 已清空数据")
+        return old_data
+    except KeyboardInterrupt:
+        print("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
+async def modify_exchange(account: UserInfo = None):
+    """
+    修改兑换信息
+    """
+    try:
+        os.system(gl.CLEAR_TYPE)
+        old_data = await get_exchange_data()
+        if not scheduler.get_jobs() or not old_data:
+            print("当前没有兑换商品")
+            return True
+        print("当前兑换商品如下:")
+        exchange_num = 1
+        wait_select_exchange_list = []
+        for exchange_key, exchange_value in old_data.items():
+            if account is not None and exchange_value['mys_uid'] != account.mys_uid:
+                continue
+            print("-" * 25)
+            print(f"兑换信息序号: {exchange_num}")
+            print(f"兑换商品名称: {exchange_value['goods_name']}")
+            print(f"兑换商品数量: {exchange_value['exchange_num']} 个")
+            print(f"兑换账户: {exchange_value['mys_uid']}")
+            if exchange_value['goods_biz'] != 'bbs_cn' and exchange_value['goods_type'] == 2:
+                if account is None:
+                    game_list = gl.USER_DICT[exchange_value['mys_uid']].game_list
+                else:
+                    game_list = account.game_list
+                for game_data in game_list:
+                    if game_data.game_uid == exchange_value['game_id']:
+                        print(f"虚拟商品接收游戏账号UID: {game_data.game_uid}")
+                        print(f"虚拟商品接收游戏账号昵称: {game_data.game_nickname}")
+                        print(f"虚拟商品接收游戏账号区服: {game_data.game_region_name}")
+                        break
+            if 'address_id' in exchange_value:
+                if account is None:
+                    address_list = gl.USER_DICT[exchange_value['mys_uid']].address_list
+                else:
+                    address_list = account.address_list
+                for address_data in address_list:
+                    if address_data.address_id == exchange_value['address_id']:
+                        print(f"收货地址: {address_data.full_address}")
+                        break
+            wait_select_exchange_list.append(exchange_key)
+            exchange_num += 1
+        if not wait_select_exchange_list:
+            print("当前没有兑换商品")
+            return True
+        while True:
+            select_id_in = await async_input("请输入需要删除的兑换信息序号: ")
+            if select_id_in.isdigit() and 0 < int(select_id_in) < exchange_num:
+                wait_select_exchange = wait_select_exchange_list[int(select_id_in) - 1]
+                break
+            else:
+                print("输入错误, 请重新输入")
+        while True:
+            # select_id_in = await async_input("请输入需要进行的操作:\n1. 删除：")
+            select_id_in = '1'
+            if select_id_in == '1':
+                del old_data[wait_select_exchange]
+                with open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "w", encoding="utf-8") as exchange_file:
+                    json.dump(old_data, exchange_file, ensure_ascii=False, indent=4)
+                scheduler.remove_job(wait_select_exchange)
+                print("删除成功")
+                break
+            elif select_id_in == '2':
+                print("修改功能暂未开放")
+            else:
+                print("输入错误, 请重新输入")
+    except KeyboardInterrupt:
+        print("用户强制退出")
+        input("按回车键继续")
+        return True
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
 async def select_goods(account: UserInfo, goods_num, goods_class_list, user_point, game_biz):
     """
     选择商品
@@ -239,20 +338,20 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
             if '' not in goods_id_in:
                 goods_select_dict = {}
                 goods_point = 0
-                old_data = {}
-                exchange_file_path = os.path.join(gl.DATA_PATH, 'exchange_list.json')
-                if os.path.exists(exchange_file_path):
-                    with open(exchange_file_path, "r", encoding="utf-8") as exchange_file:
-                        try:
-                            old_data = json.load(exchange_file)
-                        except json.decoder.JSONDecodeError:
-                            old_data = {}
-                            print("数据格式错误, 已清空数据")
+                old_data = await get_exchange_data()
                 for goods_id in goods_id_in:
                     if goods_id.isdigit() and 0 < int(goods_id) < goods_num:
                         now_goods = goods_class_list[int(goods_id) - 1]
                         # 需添加判断
-                        if account.mys_uid + now_goods.goods_id in old_data:
+                        exist_flag = False
+                        if now_goods.game_biz != 'bbs_cn' and now_goods.goods_type == 2:
+                            for game_info in account.game_list:
+                                if account.mys_uid + game_info.game_uid + now_goods.goods_id in old_data:
+                                    exist_flag = True
+                                    break
+                        elif account.mys_uid + account.mys_uid + now_goods.goods_id in old_data:
+                            exist_flag = True
+                        if exist_flag:
                             print(f"商品{now_goods.goods_name}已经在兑换列表中, 跳过", end=", ")
                             print("如需修改信息, 请稍后使用修改兑换信息功能修改")
                             continue
@@ -353,7 +452,8 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                                 else:
                                     print("输入数量错误, 请重新输入")
                         now_goods_dict['exchange_num'] = exchange_num
-                        goods_select_dict[account.mys_uid + now_goods.goods_id] = now_goods_dict
+                        goods_select_dict[
+                            account.mys_uid + now_goods_dict['game_id'] + now_goods.goods_id] = now_goods_dict
                         goods_point += now_goods.goods_price * exchange_num
                 if user_point != -1 and user_point < goods_point:
                     print(f"当前米游币不足, 当前米游币数量: {user_point}, 所需米游币数量: {goods_point}")
@@ -365,12 +465,12 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                     await async_input("按回车键继续")
                     return True
                 old_data.update(goods_select_dict)
+                exchange_file_path = os.path.join(gl.DATA_PATH, 'exchange_list.json')
                 with open(exchange_file_path, "w", encoding="utf-8") as f:
                     json.dump(old_data, f, ensure_ascii=False, indent=4)
-                for task in goods_select_dict.values():
-                    schedule_id = task['mys_uid'] + task['goods_id']
-                    scheduler.add_job(id=schedule_id, trigger='date', func=run_task, args=[task],
-                                      next_run_time=datetime.fromtimestamp(task['exchange_time']))
+                for task_key, task_value in goods_select_dict.items():
+                    scheduler.add_job(id=task_key, trigger='date', func=run_task, args=[task_value],
+                                      next_run_time=datetime.fromtimestamp(task_value['exchange_time']))
                 print("商品添加成功")
                 await async_input("按回车键继续")
                 return True
@@ -498,6 +598,9 @@ async def get_goods_list(account: UserInfo, use_type: str = "set"):
                 await async_input("没有可兑换的商品(回车以返回)")
             if use_type == "set":
                 await select_goods(account, goods_num, goods_class_list, user_point, game_biz)
+            else:
+                await async_input("获取完毕, 回车以返回")
+            return True
     except KeyboardInterrupt:
         print("用户强制退出")
         await async_input("按回车键继续")
@@ -563,12 +666,13 @@ async def info_menu():
 选择功能:
 1. 获取账户信息
 2. 查询设置兑换商品
-3. 查询当前米游币数量
-4. 更新Cookie
-5. 更新游戏账号信息
-6. 更新收货地址信息
-7. 更新频道等级信息
-8. 重新选择账户
+3. 修改兑换信息
+4. 查询当前米游币数量
+5. 更新Cookie
+6. 更新游戏账号信息
+7. 更新收货地址信息
+8. 更新频道等级信息
+9. 重新选择账户
 0. 返回主菜单""")
             select_function = await async_input("请输入选择功能的序号: ")
             os.system(gl.CLEAR_TYPE)
@@ -594,19 +698,36 @@ async def info_menu():
                         await async_input("按回车键继续")
                         continue
                     break
+                continue
             elif select_function == "3":
+                while True:
+                    os.system(gl.CLEAR_TYPE)
+                    select_function = await async_input(
+                        "1. 仅修改当前选择用户商品信息\n2. 修改全部商品信息\n0. 返回上一级: ")
+                    if select_function == "1":
+                        await modify_exchange(account)
+                    elif select_function == "2":
+                        await modify_exchange()
+                    elif select_function == "0":
+                        break
+                    else:
+                        print("输入错误, 请重新输入")
+                        await async_input("按回车键继续")
+                        continue
+                    break
+            elif select_function == "4":
                 now_point = await get_point(account)
                 if now_point:
                     print(f"当前米游币数量: {now_point}")
                 else:
                     print("未获取到米游币数量")
             # 待优化
-            elif select_function == "4":
+            elif select_function == "5":
                 update_result = await update_cookie(account)
                 if update_result:
                     account.cookie = update_result
                     print("cookie更新成功")
-            elif select_function == "5":
+            elif select_function == "6":
                 game_info_list = await check_game_roles(account)
                 if game_info_list:
                     account.game_list = game_info_list
@@ -615,7 +736,7 @@ async def info_menu():
                     print("更新游戏账号信息成功")
                 else:
                     print("未获取到游戏账号信息")
-            elif select_function == "6":
+            elif select_function == "7":
                 address_list = await get_address(account)
                 if address_list:
                     account.address_list = address_list
@@ -624,14 +745,14 @@ async def info_menu():
                     print("更新收货地址信息成功")
                 else:
                     print("未获取到收货地址信息")
-            elif select_function == "7":
+            elif select_function == "8":
                 channel_data_dict = await get_channel_level(account)
                 if channel_data_dict:
                     account.channel_dict = channel_data_dict
                     with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
                         json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                     print("更新频道等级信息成功")
-            elif select_function == "8":
+            elif select_function == "9":
                 if gl.USER_DICT:
                     account = select_user(gl.USER_DICT)
                 else:
@@ -640,6 +761,7 @@ async def info_menu():
                 return
             else:
                 await async_input("输入有误, 请重新输入(回车以返回)")
+                continue
             await async_input("按回车键继续")
     except KeyboardInterrupt:
         print("用户强制退出")
