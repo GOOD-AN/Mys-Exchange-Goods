@@ -10,6 +10,7 @@ from datetime import datetime
 
 import httpx
 import pyperclip
+from apscheduler.events import EVENT_JOB_ADDED, EVENT_JOB_MODIFIED, EVENT_JOB_MISSED, EVENT_JOB_REMOVED
 
 from . import global_var as gl, async_input, scheduler
 from .exchange_goods import run_task
@@ -651,11 +652,31 @@ async def get_user_info():
         return False
 
 
+def scheduler_get_listener(event):
+    """
+    监听设置任务事件
+    """
+    try:
+        if event.code == EVENT_JOB_ADDED:
+            print(f"任务 {event.job_id} 已添加")
+        elif event.code == EVENT_JOB_REMOVED:
+            print(f"任务 {event.job_id} 已删除")
+        elif event.code == EVENT_JOB_MODIFIED:
+            print(f"任务 {event.job_id} 已修改")
+        elif event.code == EVENT_JOB_MISSED:
+            print(f"任务 {event.job_id} 已错过")
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
 async def info_menu():
     """
     开始获取信息任务
     """
     try:
+        scheduler.add_listener(scheduler_get_listener,
+                               EVENT_JOB_ADDED | EVENT_JOB_REMOVED | EVENT_JOB_MODIFIED | EVENT_JOB_MISSED)
         account = UserInfo(None)
         if gl.USER_DICT:
             account = await select_user(gl.USER_DICT)
@@ -666,7 +687,7 @@ async def info_menu():
 选择功能:
 1. 获取账户信息
 2. 查询设置兑换商品
-3. 修改兑换信息
+3. 修改兑换信息(暂仅支持删除)
 4. 查询当前米游币数量
 5. 更新Cookie
 6. 更新游戏账号信息
@@ -758,6 +779,7 @@ async def info_menu():
                 else:
                     print("暂无账户信息, 请先获取账户信息")
             elif select_function == "0":
+                scheduler.remove_listener(scheduler_get_listener)
                 return
             else:
                 await async_input("输入有误, 请重新输入(回车以返回)")
@@ -768,5 +790,6 @@ async def info_menu():
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        scheduler.remove_listener(scheduler_get_listener)
         await async_input("按回车键继续")
         return False

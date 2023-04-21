@@ -8,6 +8,7 @@ import sys
 from datetime import datetime
 
 import httpx
+from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
 
 from . import global_var as gl, async_input
 from . import scheduler
@@ -185,6 +186,27 @@ async def init_exchange(flag=True):
         return False
 
 
+def scheduler_wait_listener(event):
+    """
+    监听等待定时任务事件
+    """
+    try:
+        if event.code == EVENT_JOB_MISSED:
+            print(f"任务 {event.job_id} 已错过")
+        elif event.code == EVENT_JOB_ERROR:
+            print(f"任务 {event.job_id} 运行出错, 错误为: {event.exception}")
+        elif event.code == EVENT_JOB_EXECUTED:
+            print(f"任务 {event.job_id} 已执行")
+            scheduler_list = scheduler.get_jobs()
+            if scheduler_list:
+                print(f"下次运行时间为: {scheduler_list[0].next_run_time}")
+            else:
+                print("所有兑换任务已完成")
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
 async def wait_tasks():
     """
     等待任务完成
@@ -195,11 +217,18 @@ async def wait_tasks():
             await async_input("按回车键返回主菜单")
             return True
         print("正在等待任务完成")
-        await async_input("按回车键返回主菜单")
+        scheduler.add_listener(scheduler_wait_listener, EVENT_JOB_MISSED | EVENT_JOB_ERROR | EVENT_JOB_EXECUTED)
+        scheduler_list = scheduler.get_jobs()
+        print(f"当前任务数量为: {len(scheduler_list)} 个")
+        print(f"下次运行时间为: {scheduler_list[0].next_run_time}")
+        await async_input("按回车键即可返回主菜单(使用其他功能不影响定时任务运行)")
+        scheduler.remove_listener(scheduler_wait_listener)
         return True
     except KeyboardInterrupt:
         print("用户强制退出")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        scheduler.remove_listener(scheduler_wait_listener)
+        await async_input("按回车键继续")
         return False
