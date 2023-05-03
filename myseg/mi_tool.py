@@ -2,7 +2,6 @@
 米游社相关
 """
 import json
-import os
 import random
 import re
 import string
@@ -53,7 +52,7 @@ async def get_new_ds(_b, _q):
         return f"{t_param},{r_param},{c_param}"
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -100,13 +99,13 @@ async def update_cookie(account: UserInfo):
             print(f"cookie获取出错，错误原因为: {update_cookie_url_req['message']}")
             return False
         account.cookie = re.sub(account.cookie_token, update_cookie_url_req['data']['cookie_token'], account.cookie)
-        with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w',
+        with open(gl.USER_DATA_PATH / f"{account.mys_uid}.json", 'w',
                   encoding='utf-8') as f:
             json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
         return account.cookie
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -162,7 +161,7 @@ async def check_cookie(account: UserInfo) -> int:
         return 1
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -200,7 +199,7 @@ async def get_goods_detail(goods_id, get_type=''):
         return return_info
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -230,7 +229,7 @@ async def get_action_ticket(account: UserInfo):
         return action_ticket_req.json()['data']['ticket']
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -284,7 +283,7 @@ async def check_game_roles(account: UserInfo, game_biz='', uid=0, get_type='get'
         return False
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")

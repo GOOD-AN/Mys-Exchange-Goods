@@ -145,8 +145,8 @@ def start_info():
 
 if __name__ == '__main__':
     try:
-        start_info()
         init_config()
+        start_info()
         if gl.INI_CONFIG.getboolean("update_setting", "check_enable"):
             asyncio.run(check_update(MAIN_VERSION))
         input("按回车键继续")

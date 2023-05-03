@@ -46,7 +46,7 @@ async def select_user(select_user_data: dict):
         return select_user_data[select_user_id]
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -140,6 +140,7 @@ async def get_cookie():
         return uer_cookie, login_user_cookie_two['account_id']
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -177,6 +178,7 @@ async def get_channel_level(account: UserInfo):
         return channel_data_dict
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -219,7 +221,7 @@ async def get_address(account: UserInfo):
         return address_new_list
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -231,8 +233,8 @@ async def get_exchange_data():
     获取兑换数据
     """
     try:
-        exchange_file_path = os.path.join(gl.DATA_PATH, 'exchange_list.json')
-        if os.path.exists(exchange_file_path):
+        exchange_file_path = gl.DATA_PATH / 'exchange_list.json'
+        if exchange_file_path.exists():
             with open(exchange_file_path, "r", encoding="utf-8") as exchange_file:
                 try:
                     old_data = json.load(exchange_file)
@@ -307,7 +309,7 @@ async def modify_exchange(account: UserInfo = None):
             select_id_in = '1'
             if select_id_in == '1':
                 del old_data[wait_select_exchange]
-                with open(os.path.join(gl.DATA_PATH, 'exchange_list.json'), "w", encoding="utf-8") as exchange_file:
+                with open(gl.DATA_PATH / 'exchange_list.json', "w", encoding="utf-8") as exchange_file:
                     json.dump(old_data, exchange_file, ensure_ascii=False, indent=4)
                 scheduler.remove_job(wait_select_exchange)
                 print("删除成功")
@@ -319,7 +321,7 @@ async def modify_exchange(account: UserInfo = None):
     except KeyboardInterrupt:
         print("用户强制退出")
         input("按回车键继续")
-        return True
+        sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
@@ -466,7 +468,7 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                     await async_input("按回车键继续")
                     return True
                 old_data.update(goods_select_dict)
-                exchange_file_path = os.path.join(gl.DATA_PATH, 'exchange_list.json')
+                exchange_file_path = gl.DATA_PATH / 'exchange_list.json'
                 with open(exchange_file_path, "w", encoding="utf-8") as f:
                     json.dump(old_data, f, ensure_ascii=False, indent=4)
                 for task_key, task_value in goods_select_dict.items():
@@ -483,6 +485,7 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
         return True
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -604,7 +607,7 @@ async def get_goods_list(account: UserInfo, use_type: str = "set"):
             return True
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -637,15 +640,15 @@ async def get_user_info():
             user_info_json['channel_dict'] = channel_data_dict
             new_user.channel_dict = channel_data_dict
         if user_info_json:
-            if not os.path.exists(gl.USER_DATA_PATH):
-                os.makedirs(gl.USER_DATA_PATH)
-            with open(os.path.join(gl.USER_DATA_PATH, f"{mys_uid}.json"), 'w', encoding='utf-8') as f:
+            if not gl.USER_DATA_PATH.exists():
+                gl.USER_DATA_PATH.mkdir(parents=True, exist_ok=True)
+            with open(gl.USER_DATA_PATH / f"{mys_uid}.json", 'w', encoding='utf-8') as f:
                 json.dump(user_info_json, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                 gl.USER_DICT[mys_uid] = new_user
         return new_user
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -711,7 +714,7 @@ async def info_menu():
                     if select_function == "1":
                         await get_goods_list(account, "get")
                     elif select_function == "2":
-                        await get_goods_list(account, "set")
+                        await get_goods_list(account)
                     elif select_function == "0":
                         break
                     else:
@@ -752,7 +755,7 @@ async def info_menu():
                 game_info_list = await check_game_roles(account)
                 if game_info_list:
                     account.game_list = game_info_list
-                    with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
+                    with open(gl.USER_DATA_PATH / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
                         json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                     print("更新游戏账号信息成功")
                 else:
@@ -761,7 +764,7 @@ async def info_menu():
                 address_list = await get_address(account)
                 if address_list:
                     account.address_list = address_list
-                    with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
+                    with open(gl.USER_DATA_PATH / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
                         json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                     print("更新收货地址信息成功")
                 else:
@@ -770,7 +773,7 @@ async def info_menu():
                 channel_data_dict = await get_channel_level(account)
                 if channel_data_dict:
                     account.channel_dict = channel_data_dict
-                    with open(os.path.join(gl.USER_DATA_PATH, f"{account.mys_uid}.json"), 'w', encoding='utf-8') as f:
+                    with open(gl.USER_DATA_PATH / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
                         json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                     print("更新频道等级信息成功")
             elif select_function == "9":
@@ -787,6 +790,7 @@ async def info_menu():
             await async_input("按回车键继续")
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")

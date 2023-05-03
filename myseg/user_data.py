@@ -17,6 +17,9 @@ class ClassEncoder(json.JSONEncoder):
     """
 
     def default(self, obj):
+        """
+        重写JSONEncoder以适应类
+        """
         if isinstance(obj, (UserInfo, GameInfo, AddressInfo, ExchangeInfo, GoodsInfo)):
             return dict((key.lstrip("_"), value) for key, value in obj.__dict__.items())
         else:

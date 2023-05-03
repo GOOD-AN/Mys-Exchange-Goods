@@ -3,7 +3,6 @@
 """
 import asyncio
 import json
-import os
 import sys
 from datetime import datetime
 
@@ -14,35 +13,6 @@ from . import global_var as gl, async_input
 from . import scheduler
 from .mi_tool import get_goods_detail
 from .user_data import ExchangeInfo
-
-CHECK_URL = 'api-takumi.mihoyo.com'
-
-
-async def check_exchange_status(result_list):
-    """
-    检测兑换状态
-    """
-    try:
-        success_list = []
-        fail_list = []
-        for result in result_list:
-            if result[0]:
-                success_list.append(result[1])
-            else:
-                fail_list.append(result[1])
-        if success_list:
-            success_list = list(set(success_list))
-            for success_info in success_list:
-                print(f"商品{success_info[0]}兑换成功, 订单号为{success_info[1]}, 请前往米游社APP查看")
-        if fail_list:
-            fail_list = list(set(fail_list))
-            for fail_info in fail_list:
-                print(f"商品{fail_info}兑换失败")
-    except KeyboardInterrupt:
-        print("用户强制退出")
-        sys.exit()
-    except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
 
 
 async def post_exchange_gift(cookie, goods_id, uid, biz, region, address_id, goods_name):
@@ -87,6 +57,7 @@ async def post_exchange_gift(cookie, goods_id, uid, biz, region, address_id, goo
         return [True, str(goods_id), goods_name, exchange_goods_req_json['data']['order_sn']]
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -115,6 +86,7 @@ async def run_task(task_data):
             print(f"商品 {task_list[0].result()[2]} 兑换失败")
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -126,8 +98,8 @@ async def init_task():
     初始化任务
     """
     try:
-        exchange_file_path = os.path.join(gl.DATA_PATH, 'exchange_list.json')
-        if not os.path.exists(exchange_file_path):
+        exchange_file_path = gl.DATA_PATH / 'exchange_list.json'
+        if not exchange_file_path.exists():
             return False
         with open(exchange_file_path, "r", encoding="utf-8") as exchange_file:
             try:
@@ -157,6 +129,7 @@ async def init_task():
         return exchange_data_dict
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -180,6 +153,7 @@ async def init_exchange(flag=True):
         return True
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -226,6 +200,7 @@ async def wait_tasks():
         return True
     except KeyboardInterrupt:
         print("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")

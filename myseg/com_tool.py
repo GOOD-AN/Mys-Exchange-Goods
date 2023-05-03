@@ -3,16 +3,17 @@
 """
 import asyncio
 import json
-import os
 import platform
 import sys
 import time
 from configparser import ConfigParser
 from hashlib import md5
+from pathlib import Path
 from shutil import copyfile
 
 import httpx
 
+from config import logging_config
 from . import global_var as gl
 from .user_data import GameInfo, AddressInfo, UserInfo
 
@@ -47,13 +48,13 @@ def load_config():
     """
     config_data = ConfigParser()
     try:
-        config_path = os.path.join(gl.CONFIG_PATH, 'config.ini')
-        default_config_path = os.path.join(gl.CONFIG_PATH, 'default_config.ini')
-        if not os.path.exists(config_path) and not os.path.exists(default_config_path):
+        config_path = gl.CONFIG_PATH / 'config.ini'
+        default_config_path = gl.CONFIG_PATH / 'default_config.ini'
+        if not config_path.exists() and not default_config_path.exists():
             print("配置文件不存在, 请检查")
             input("按回车键继续")
             sys.exit()
-        if not os.path.exists(config_path) and os.path.exists(default_config_path):
+        if not config_path.exists() and default_config_path.exists():
             copyfile(default_config_path, config_path)
         config_data.read_file(open(config_path, "r", encoding="utf-8"))
         return config_data
@@ -73,7 +74,7 @@ async def write_config_file(section, key, value):
     """
     try:
         gl.INI_CONFIG.set(section, key, value)
-        config_path = os.path.join(gl.CONFIG_PATH, 'config.ini')
+        config_path = gl.CONFIG_PATH / 'config.ini'
         with open(config_path, "w", encoding="utf-8") as config_file:
             gl.INI_CONFIG.write(config_file)
             print("写入成功")
@@ -82,7 +83,7 @@ async def write_config_file(section, key, value):
             gl.MI_COOKIE = value
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -183,7 +184,7 @@ async def md5_encode(text):
         return md5_str.hexdigest()
     except KeyboardInterrupt:
         print("用户强制退出")
-        await async_input("按回车键继续")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
         print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
@@ -197,10 +198,10 @@ def load_user_data():
     """
     try:
         user_data_dict = {}
-        if os.path.exists(gl.USER_DATA_PATH):
-            user_data_file_list = os.listdir(gl.USER_DATA_PATH)
+        if gl.USER_DATA_PATH.exists():
+            user_data_file_list = gl.USER_DATA_PATH.iterdir()
             for user_data_file in user_data_file_list:
-                with open(os.path.join(gl.USER_DATA_PATH, user_data_file), 'r', encoding='utf-8') as f:
+                with open(gl.USER_DATA_PATH / user_data_file, 'r', encoding='utf-8') as f:
                     try:
                         user_data = json.load(f)
                         user_game_list = []
@@ -232,16 +233,17 @@ def init_config():
     初始化配置文件
     """
     try:
-        gl.BASIC_PATH = os.path.dirname(sys.argv[0])
-        # log_path = os.path.join(gl.BASIC_PATH, 'log', 'meg_all.log')
-        # if not os.path.exists(os.path.join(gl.BASIC_PATH, 'log')):
-        #     os.mkdir(gl.BASIC_PATH)
-        # logging_config.log_config['handlers']['standard_file']['filename'] = log_path
-        # logging.config.dictConfig(logging_config.log_config)
-        # gl.standard_log = logging.getLogger('standard_logger')
-        gl.CONFIG_PATH = os.path.join(gl.BASIC_PATH, "config")
-        gl.DATA_PATH = os.path.join(gl.BASIC_PATH, 'data')
-        gl.USER_DATA_PATH = os.path.join(gl.DATA_PATH, 'user_info')
+        gl.BASIC_PATH = Path(sys.argv[0]).cwd()
+        # 自定义日志路径与名称
+        log_path = gl.BASIC_PATH / 'log' / 'standard.log'
+        if not log_path.parent.exists():
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+        logging_config.log_config['handlers']['standard_file']['filename'] = log_path
+        # logger.config.dictConfig(logging_config.log_config)
+        # logger.getLogger('info_console_logger')
+        gl.CONFIG_PATH = gl.BASIC_PATH / 'config'
+        gl.DATA_PATH = gl.BASIC_PATH / 'data'
+        gl.USER_DATA_PATH = gl.DATA_PATH / 'user_info'
         gl.INI_CONFIG = load_config()
         gl.CLEAR_TYPE = check_plat()
         gl.USER_DICT = load_user_data()
