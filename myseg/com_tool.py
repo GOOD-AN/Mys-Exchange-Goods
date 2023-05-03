@@ -1,0 +1,234 @@
+"""
+通用函数
+"""
+import asyncio
+import json
+import platform
+import sys
+import time
+from configparser import ConfigParser
+from hashlib import md5
+from shutil import copyfile
+
+import httpx
+
+from . import global_var as gl, logger
+from .user_data import GameInfo, AddressInfo, UserInfo
+
+CHECK_UPDATE_URL_LIST = [
+    'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
+    'https://fastly.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
+    'https://github.com/GOOD-AN/Mys-Exchange-Goods/raw/main/',
+]
+
+
+def check_plat():
+    """
+    检查平台
+    """
+    try:
+        if platform.system() == "Windows":
+            return "cls"
+        return "clear"
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        input("按回车键继续")
+        sys.exit()
+
+
+def load_config():
+    """
+    加载配置文件
+    """
+    config_data = ConfigParser()
+    try:
+        config_path = gl.config_path / 'config.ini'
+        default_config_path = gl.config_path / 'default_config.ini'
+        if not config_path.exists() and not default_config_path.exists():
+            logger.error("配置文件不存在, 请检查")
+            input("按回车键继续")
+            sys.exit()
+        if not config_path.exists() and default_config_path.exists():
+            copyfile(default_config_path, config_path)
+        config_data.read_file(open(config_path, "r", encoding="utf-8"))
+        return config_data
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        input("按回车键继续")
+        sys.exit()
+
+
+async def compare_version(old_version, new_version):
+    """
+    版本号比较
+    """
+    try:
+        for o_v, n_v in zip(old_version, new_version):
+            if o_v > n_v:
+                return 1
+            if o_v < n_v:
+                return -1
+        return 0
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        await async_input("按回车键继续")
+        return False
+
+
+async def check_update(main_version):
+    """
+    检查更新
+    """
+    try:
+        config_version = gl.init_config.get('app', 'version')
+        if main_version == config_version:
+            logger.info(f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}")
+            # 远程检查更新
+            check_info = {}
+            logger.info("正在联网检查更新...")
+            for check_update_url in CHECK_UPDATE_URL_LIST:
+                check_url = check_update_url + "update_log.json"
+                try:
+                    async with httpx.AsyncClient() as client:
+                        check_info = await client.get(check_url, timeout=5)
+                        check_info = check_info.json()
+                    break
+                except (httpx.HTTPError, json.JSONDecodeError):
+                    continue
+            if not check_info:
+                logger.warning("检查更新失败")
+                return False
+            remote_least_version = check_info['least_version'].split('.')
+            local_version = main_version.split('.')
+            remote_last_version = check_info['last_version'].split('.')
+            if await compare_version(local_version, remote_last_version) == -1:
+                remote_update_log_list = check_info['update_log']
+                print(f"当前程序版本为v{main_version}, 最新程序版本为v{check_info['last_version']}")
+                print("当前非最新版本，建议更新\n")
+                print("更新概览: ")
+                print("=" * 50)
+                for update_log in remote_update_log_list:
+                    if await compare_version(update_log['version'].split('.'), local_version) == 1:
+                        print("版本: ", f"{update_log['version']}".center(12))
+                        print(f"更新时间: {update_log['update_time']}")
+                        print(f"更新说明: {update_log['update_content'][0]}")
+                        for content in update_log['update_content'][1:]:
+                            print(content.rjust(20))
+                        print("=" * 50)
+                if await compare_version(remote_least_version, local_version) == 1:
+                    logger.warning("版本过低, 程序将停止运行")
+                    print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
+                    time.sleep(3)
+                    sys.exit()
+                print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
+                return True
+        else:
+            logger.warning(
+                f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
+            print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
+            return True
+        logger.info("当前已是最新版本")
+        return True
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return None
+
+
+async def md5_encode(text):
+    """
+    md5加密
+    """
+    try:
+        md5_str = md5()
+        md5_str.update(text.encode('utf-8'))
+        return md5_str.hexdigest()
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        await async_input("按回车键继续")
+        sys.exit()
+
+
+def load_user_data():
+    """
+    加载用户数据
+    """
+    try:
+        user_data_dict = {}
+        if gl.user_data_path.exists():
+            user_data_file_list = gl.user_data_path.iterdir()
+            for user_data_file in user_data_file_list:
+                with open(gl.user_data_path / user_data_file, 'r', encoding='utf-8') as f:
+                    try:
+                        user_data = json.load(f)
+                        user_game_list = []
+                        user_address_list = []
+                        for user_game in user_data['game_list']:
+                            user_game_list.append(GameInfo(user_game))
+                        user_data['game_list'] = user_game_list
+                        for user_address in user_data['address_list']:
+                            user_address_list.append(AddressInfo(user_address))
+                        user_data['address_list'] = user_address_list
+                        user_data_dict[user_data['mys_uid']] = UserInfo(user_data)
+                    except (json.decoder.JSONDecodeError, KeyError) as err:
+                        logger.warning(f"用户数据{user_data_file}解析失败, 跳过, ", end='')
+                        logger.warning(f"错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+                        continue
+        return user_data_dict
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        input("按回车键继续")
+        sys.exit()
+
+
+def init_config():
+    """
+    初始化配置文件
+    """
+    try:
+        gl.init_config = load_config()
+        gl.clear_type = check_plat()
+        gl.user_dict = load_user_data()
+        return True
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        input("按回车键继续")
+        sys.exit()
+
+
+async def async_input(prompt=''):
+    """
+    异步输入
+    """
+    try:
+        return await asyncio.to_thread(input, prompt)
+    except AttributeError:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, input, prompt)

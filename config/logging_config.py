@@ -2,12 +2,12 @@
 日志配置
 """
 log_config = {
-    "version": 1.0,
+    "version": 1,
     "formatters": {
-        "standard_out": {
+        "simplify_output": {
             "format": "%(message)s"
         },
-        "standard_file": {
+        "full_output": {
             "format": "[%(asctime)s] MEG.%(levelname)s: (%(module)s) >>> %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S %z"
         }
@@ -17,27 +17,42 @@ log_config = {
         "standard_console": {
             "class": "logging.StreamHandler",
             "level": "DEBUG",
-            "formatter": "standard_out"
+            "formatter": "simplify_output"
         },
         "standard_file": {
             "class": "logging.handlers.TimedRotatingFileHandler",
-            "level": "INFO",
-            "formatter": "standard_file",
+            "level": "DEBUG",
+            "formatter": "full_output",
             "filename": "log/default_log.log",
             "when": 'D',
             "interval": 1,
             "backupCount": 5,
             "encoding": "utf-8"
+        },
+        "debug_console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+            "formatter": "full_output"
         }
     },
     "loggers": {
-        "standard_logger": {
+        "info_file_logger": {
             "handlers": ["standard_console", "standard_file"],
             "level": "INFO",
             "propagate": False
         },
-        "debug_logger": {
+        "debug_file_logger": {
+            "handlers": ["standard_console", "standard_file"],
+            "level": "DEBUG",
+            "propagate": False
+        },
+        "info_console_logger": {
             "handlers": ["standard_console"],
+            "level": "INFO",
+            "propagate": False
+        },
+        "debug_console_logger": {
+            "handlers": ["debug_console"],
             "level": "DEBUG",
             "propagate": False
         }

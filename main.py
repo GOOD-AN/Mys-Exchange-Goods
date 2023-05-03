@@ -2,19 +2,20 @@
 运行主程序
 """
 
+import asyncio
 import os
 import sys
 import time
 from getpass import getuser
 
-from tools import check_update, check_cookie, update_cookie, init_config
-from plugin import info_main, gift_main, config_main
-import tools.global_var as gl
+from myseg import async_input, check_update, init_config, info_menu, init_exchange, wait_tasks
+from myseg import check_cookie, update_cookie
+from myseg import global_var as gl, logger
 
-MAIN_VERSION = '2.0.4'
+MAIN_VERSION = '3.0.0'
 MESSAGE = f"""\
 ===========================================
-|        Mys Exchange Goods v{MAIN_VERSION}        |
+|        Mys Exchange Goods v{MAIN_VERSION:13s}|
 ===========================================
 Description: 用于自动兑换米游社礼物
 Author     : GOOD-AN
@@ -24,44 +25,90 @@ LICENSE    : MIT
 """
 
 
-def start():
+async def check_all_cookie():
+    """
+    检查所有cookie是否有效
+    """
+    try:
+        if not gl.user_dict or not gl.init_config.getboolean('update_setting', 'check_account_enable'):
+            return True
+        logger.info("检查所有cookie是否有效...")
+        expires_account = []
+        for account in gl.user_dict.values():
+            check_cookie_result = await check_cookie(account)
+            if check_cookie_result == -1:
+                logger.info(f"账号: {account['mys_uid']} 检查失败")
+            elif check_cookie_result == 0:
+                expires_account.append(account)
+        if expires_account:
+            if gl.init_config.getboolean('update_setting', 'update_account_enable'):
+                logger.info("检测到有账号cookie过期, 尝试自动更新cookie")
+                for account in expires_account:
+                    update_result = await update_cookie(account)
+                    if update_result:
+                        gl.user_dict[account.mys_uid].cookie = update_result
+                    else:
+                        logger.info(f"账号: {account.mys_uid} 更新cookie失败")
+                logger.info("自动更新cookie完成")
+            else:
+                for account in expires_account:
+                    logger.info(f"账号: {account.mys_uid} cookie已过期")
+                logger.info("自动更新已配置为关闭, 请手动更新cookie")
+        else:
+            logger.info("所有账号cookie有效")
+        input("按回车键继续")
+        return True
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        input("按回车键继续")
+        return False
+
+
+async def main_menu():
     """
     开始任务
     """
     try:
-        if gl.MI_COOKIE and not check_cookie():
-            gl.standard_log.info("Cookie失效, 尝试更新")
-            update_cookie()
+        await check_all_cookie()
+        logger.info("初始化定时任务...")
+        await init_exchange()
         while True:
-            os.system(gl.CLEAR_TYPE)
+            os.system(gl.clear_type)
             print("""主菜单
 选择功能:
 1. 获取信息
-2. 兑换商品
+2. 等待商品兑换
 3. 其他设置
 4. 检查更新
 0. 退出""")
-            select_function = input("请输入选择功能的序号: ")
-            os.system(gl.CLEAR_TYPE)
+            select_function = await async_input("请输入选择功能的序号: ")
+            os.system(gl.clear_type)
             if select_function == "1":
-                info_main()
+                await info_menu()
             elif select_function == "2":
-                gift_main()
+                await wait_tasks()
+                continue
             elif select_function == "3":
-                config_main()
+                print("暂未开放")
             elif select_function == "4":
-                check_update(MAIN_VERSION)
-                input("按回车键继续")
+                await check_update(MAIN_VERSION)
             elif select_function == "0":
                 sys.exit()
             else:
-                input("输入有误，请重新输入(回车以返回)")
+                await async_input("输入有误，请重新输入(回车以返回)")
+                continue
+            await async_input("按回车键继续")
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        logger.warning("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
+        logger.critical(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        await async_input("按回车键继续")
         sys.exit()
 
 
@@ -90,25 +137,28 @@ def start_info():
             print(f"{user_name}，夜深了，花睡了，早些休息哦~")
         print(MESSAGE)
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        logger.warning("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as err:
-        gl.standard_log.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         return False
 
 
 if __name__ == '__main__':
     try:
+        init_config()  # 需优化
         start_info()
-        init_config()
-        check_update(MAIN_VERSION)
+        if gl.init_config.getboolean("update_setting", "check_enable"):
+            asyncio.run(check_update(MAIN_VERSION))
         input("按回车键继续")
-        start()
+        asyncio.run(main_menu())
     except KeyboardInterrupt:
-        gl.standard_log.warning("用户强制退出")
+        logger.warning("用户强制退出")
+        input("按回车键继续")
         sys.exit()
     except Exception as main_err:
-        gl.standard_log.error(f"运行出错, 错误为: {main_err}, 错误行数为: {main_err.__traceback__.tb_lineno}")
+        logger.critical(f"运行出错, 错误为: {main_err}, 错误行数为: {main_err.__traceback__.tb_lineno}")
         input("按回车键继续")
         sys.exit()
