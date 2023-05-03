@@ -388,8 +388,9 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                                 if account_game.game_biz == game_biz and account_game.game_level >= limit_level:
                                     select_account_game.append(account_game)
                             if not select_account_game:
-                                logger.info(f"商品{now_goods.goods_name}兑换要求{GAME_NAME[game_biz]}等级为: {limit_level}, "
-                                      f"未找到符合条件的账号, 跳过兑换")
+                                logger.info(
+                                    f"商品{now_goods.goods_name}兑换要求{GAME_NAME[game_biz]}等级为: {limit_level}, "
+                                    f"未找到符合条件的账号, 跳过兑换")
                                 print(
                                     "请前往米游社APP绑定满足要求的账号, 如信息错误或需要更新绑定信息, 请稍后使用更新游戏账号信息功能")
                                 continue
@@ -474,8 +475,11 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                 with open(exchange_file_path, "w", encoding="utf-8") as f:
                     json.dump(old_data, f, ensure_ascii=False, indent=4)
                 for task_key, task_value in goods_select_dict.items():
+                    run_time = task_value['exchange_time']
+                    if run_time == -1:
+                        run_time = int(time.time() + 300)
                     scheduler.add_job(id=task_key, trigger='date', func=run_task, args=[task_value],
-                                      next_run_time=datetime.fromtimestamp(task_value['exchange_time']))
+                                      next_run_time=datetime.fromtimestamp(run_time))
                 logger.info("商品添加成功")
                 await async_input("按回车键继续")
                 return True
@@ -580,9 +584,10 @@ async def get_goods_list(account: UserInfo, use_type: str = "set"):
                             print("商品库存: 无限")
                             goods_class.goods_num = -1
                         else:
-                            goods_class.goods_num = goods_data['next_num'] or goods_data['total']
+                            goods_class.goods_num = goods_data['total'] or goods_data['next_num']
                             print(f"商品库存: {goods_class.goods_num}")
-                        if goods_data['next_time'] == 0:
+                        if goods_data['next_time'] == 0 or \
+                                (goods_data['next_time'] > time.time() and goods_data['total'] > 0):
                             print("商品兑换时间: 任何时段")
                             goods_class.goods_time = -1
                         else:
