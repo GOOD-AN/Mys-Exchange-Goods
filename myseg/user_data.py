@@ -8,7 +8,7 @@ from typing import Union
 
 from ntplib import NTPClient
 
-from . import global_var as gl
+from . import global_var as gl, logger
 
 
 class ClassEncoder(json.JSONEncoder):
@@ -411,8 +411,8 @@ class ExchangeInfo:
         self.address_id = goods_info['address_id'] if 'address_id' in goods_info else ''
         self.exchange_time = goods_info['exchange_time']
         self.__goods_detail = goods_detail
-        self.__ntp_enable = gl.INI_CONFIG.getboolean('ntp', 'enable')
-        self.__ntp_server = gl.INI_CONFIG.get('ntp', 'ntp_server')
+        self.__ntp_enable = gl.init_config.getboolean('ntp', 'enable')
+        self.__ntp_server = gl.init_config.get('ntp', 'ntp_server')
         self.__check_info()
 
     def __check_info(self):
@@ -440,7 +440,7 @@ class ExchangeInfo:
                 return time.time()
             return NTPClient().request(ntp_server).tx_time
         except Exception as err:
-            print(f"网络时间获取失败, 原因为{err}, 转为本地时间")
+            logger.warning(f"网络时间获取失败, 原因为{err}, 转为本地时间")
             return time.time()
 
     @property

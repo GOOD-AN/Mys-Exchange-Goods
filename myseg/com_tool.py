@@ -8,13 +8,11 @@ import sys
 import time
 from configparser import ConfigParser
 from hashlib import md5
-from pathlib import Path
 from shutil import copyfile
 
 import httpx
 
-from config import logging_config
-from . import global_var as gl
+from . import global_var as gl, logger
 from .user_data import GameInfo, AddressInfo, UserInfo
 
 CHECK_UPDATE_URL_LIST = [
@@ -33,11 +31,11 @@ def check_plat():
             return "cls"
         return "clear"
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         sys.exit()
 
@@ -48,10 +46,10 @@ def load_config():
     """
     config_data = ConfigParser()
     try:
-        config_path = gl.CONFIG_PATH / 'config.ini'
-        default_config_path = gl.CONFIG_PATH / 'default_config.ini'
+        config_path = gl.config_path / 'config.ini'
+        default_config_path = gl.config_path / 'default_config.ini'
         if not config_path.exists() and not default_config_path.exists():
-            print("配置文件不存在, 请检查")
+            logger.error("配置文件不存在, 请检查")
             input("按回车键继续")
             sys.exit()
         if not config_path.exists() and default_config_path.exists():
@@ -59,35 +57,13 @@ def load_config():
         config_data.read_file(open(config_path, "r", encoding="utf-8"))
         return config_data
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         sys.exit()
-
-
-async def write_config_file(section, key, value):
-    """
-    写入配置文件
-    """
-    try:
-        gl.INI_CONFIG.set(section, key, value)
-        config_path = gl.CONFIG_PATH / 'config.ini'
-        with open(config_path, "w", encoding="utf-8") as config_file:
-            gl.INI_CONFIG.write(config_file)
-            print("写入成功")
-        gl.INI_CONFIG = load_config()
-        if key == 'cookie':
-            gl.MI_COOKIE = value
-    except KeyboardInterrupt:
-        print("用户强制退出")
-        input("按回车键继续")
-        sys.exit()
-    except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        await async_input("按回车键继续")
 
 
 async def compare_version(old_version, new_version):
@@ -102,11 +78,11 @@ async def compare_version(old_version, new_version):
                 return -1
         return 0
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         await async_input("按回车键继续")
         return False
 
@@ -116,12 +92,12 @@ async def check_update(main_version):
     检查更新
     """
     try:
-        config_version = gl.INI_CONFIG.get('app', 'version')
+        config_version = gl.init_config.get('app', 'version')
         if main_version == config_version:
-            print(f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}")
+            logger.info(f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}")
             # 远程检查更新
             check_info = {}
-            print("正在联网检查更新...")
+            logger.info("正在联网检查更新...")
             for check_update_url in CHECK_UPDATE_URL_LIST:
                 check_url = check_update_url + "update_log.json"
                 try:
@@ -132,7 +108,7 @@ async def check_update(main_version):
                 except (httpx.HTTPError, json.JSONDecodeError):
                     continue
             if not check_info:
-                print("检查更新失败")
+                logger.warning("检查更新失败")
                 return False
             remote_least_version = check_info['least_version'].split('.')
             local_version = main_version.split('.')
@@ -152,25 +128,25 @@ async def check_update(main_version):
                             print(content.rjust(20))
                         print("=" * 50)
                 if await compare_version(remote_least_version, local_version) == 1:
-                    print("版本过低, 程序将停止运行")
+                    logger.warning("版本过低, 程序将停止运行")
                     print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
                     time.sleep(3)
                     sys.exit()
                 print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
                 return True
         else:
-            print(
+            logger.warning(
                 f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
             print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
             return True
-        print("当前已是最新版本")
+        logger.info("当前已是最新版本")
         return True
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
 
 
@@ -183,11 +159,11 @@ async def md5_encode(text):
         md5_str.update(text.encode('utf-8'))
         return md5_str.hexdigest()
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         await async_input("按回车键继续")
         sys.exit()
 
@@ -198,10 +174,10 @@ def load_user_data():
     """
     try:
         user_data_dict = {}
-        if gl.USER_DATA_PATH.exists():
-            user_data_file_list = gl.USER_DATA_PATH.iterdir()
+        if gl.user_data_path.exists():
+            user_data_file_list = gl.user_data_path.iterdir()
             for user_data_file in user_data_file_list:
-                with open(gl.USER_DATA_PATH / user_data_file, 'r', encoding='utf-8') as f:
+                with open(gl.user_data_path / user_data_file, 'r', encoding='utf-8') as f:
                     try:
                         user_data = json.load(f)
                         user_game_list = []
@@ -214,16 +190,16 @@ def load_user_data():
                         user_data['address_list'] = user_address_list
                         user_data_dict[user_data['mys_uid']] = UserInfo(user_data)
                     except (json.decoder.JSONDecodeError, KeyError) as err:
-                        print(f"用户数据{user_data_file}解析失败, 跳过, ", end='')
-                        print(f"错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+                        logger.warning(f"用户数据{user_data_file}解析失败, 跳过, ", end='')
+                        logger.warning(f"错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
                         continue
         return user_data_dict
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         sys.exit()
 
@@ -233,27 +209,16 @@ def init_config():
     初始化配置文件
     """
     try:
-        gl.BASIC_PATH = Path(sys.argv[0]).cwd()
-        # 自定义日志路径与名称
-        log_path = gl.BASIC_PATH / 'log' / 'standard.log'
-        if not log_path.parent.exists():
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-        logging_config.log_config['handlers']['standard_file']['filename'] = log_path
-        # logger.config.dictConfig(logging_config.log_config)
-        # logger.getLogger('info_console_logger')
-        gl.CONFIG_PATH = gl.BASIC_PATH / 'config'
-        gl.DATA_PATH = gl.BASIC_PATH / 'data'
-        gl.USER_DATA_PATH = gl.DATA_PATH / 'user_info'
-        gl.INI_CONFIG = load_config()
-        gl.CLEAR_TYPE = check_plat()
-        gl.USER_DICT = load_user_data()
+        gl.init_config = load_config()
+        gl.clear_type = check_plat()
+        gl.user_dict = load_user_data()
         return True
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         input("按回车键继续")
         sys.exit()
 

@@ -10,8 +10,8 @@ import time
 
 import httpx
 
-from . import global_var as gl
-from .com_tool import md5_encode, async_input
+from . import global_var as gl, logger
+from .com_tool import md5_encode
 from .user_data import UserInfo, GameInfo, ClassEncoder
 
 MYS_SALT = "TsmyHpZg8gFAVKTtlPaL6YwMldzxZJxQ"
@@ -51,11 +51,11 @@ async def get_new_ds(_b, _q):
         c_param = md5_encode(f"salt={MYS_SALT_TWO}&t={t_param}&r={r_param}&b={b_param}&q={q_param}")
         return f"{t_param},{r_param},{c_param}"
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return None
 
 
@@ -84,31 +84,31 @@ async def update_cookie(account: UserInfo):
     """
     try:
         if account.stoken == "" or account.mys_uid == "":
-            print("缺少stoken或账户ID，请重新获取cookie")
+            logger.warning("缺少stoken或账户ID，请重新获取cookie")
             return False
-        update_cookie_url = gl.MI_URL + "/auth/api/getCookieAccountInfoBySToken"
+        update_cookie_url = gl.mi_url + "/auth/api/getCookieAccountInfoBySToken"
         update_cookie_url_params = {
             "uid": account.mys_uid,
             "stoken": account.stoken
         }
-        print("开始更新cookie")
+        logger.info("开始更新cookie")
         async with httpx.AsyncClient() as client:
             update_cookie_url_req = await client.get(update_cookie_url, params=update_cookie_url_params)
         update_cookie_url_req = update_cookie_url_req.json()
         if update_cookie_url_req['data'] is None:
-            print(f"cookie获取出错，错误原因为: {update_cookie_url_req['message']}")
+            logger.error(f"cookie获取出错，错误原因为: {update_cookie_url_req['message']}")
             return False
         account.cookie = re.sub(account.cookie_token, update_cookie_url_req['data']['cookie_token'], account.cookie)
-        with open(gl.USER_DATA_PATH / f"{account.mys_uid}.json", 'w',
+        with open(gl.user_data_path / f"{account.mys_uid}.json", 'w',
                   encoding='utf-8') as f:
             json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
         return account.cookie
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -119,24 +119,24 @@ async def get_point(account: UserInfo):
     """
     try:
         if account.stoken == "" or account.stuid == "":
-            print("缺少stoken或stuid，请重新获取cookie")
+            logger.warning("缺少stoken或stuid，请重新获取cookie")
             return False
-        point_url = gl.BBS_URL + '/apihub/sapi/getUserMissionsState'
+        point_url = gl.bbs_url + '/apihub/sapi/getUserMissionsState'
         point_headers = {
             'Cookie': account.cookie,
         }
         async with httpx.AsyncClient() as client:
             point_req = await client.get(point_url, headers=point_headers)
         if point_req.status_code != 200:
-            print(f"获取米游币数量失败, 返回状态码为{str(point_req.status_code)}")
+            logger.error(f"获取米游币数量失败, 返回状态码为{str(point_req.status_code)}")
             return False
         point_req = point_req.json()
         if point_req['retcode'] != 0:
-            print(f"获取米游币数量失败, 原因为{point_req['message']}")
+            logger.error(f"获取米游币数量失败, 原因为{point_req['message']}")
             return False
         return point_req['data']['total_points']
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -145,26 +145,26 @@ async def check_cookie(account: UserInfo) -> int:
     检查cookie是否过期
     """
     try:
-        check_cookie_url = gl.MI_URL + '/account/address/list'
+        check_cookie_url = gl.mi_url + '/account/address/list'
         check_cookie_hearders = {
             'Cookie': account.cookie
         }
         async with httpx.AsyncClient() as client:
             check_cookie_req = await client.get(check_cookie_url, headers=check_cookie_hearders)
         if check_cookie_req.status_code != 200:
-            print(f"检查Cookie失败, 返回状态码为{str(check_cookie_req.status_code)}")
+            logger.error(f"检查Cookie失败, 返回状态码为{str(check_cookie_req.status_code)}")
             return -1
         check_cookie_req = check_cookie_req.json()
         if check_cookie_req['retcode'] != 0:
-            print("Cookie已过期")
+            logger.warning("Cookie已过期")
             return 0
         return 1
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return -1
 
 
@@ -174,7 +174,7 @@ async def get_goods_detail(goods_id, get_type=''):
     按需要获取礼物详情
     """
     try:
-        goods_detail_url = gl.MI_URL + "/mall/v1/web/goods/detail"
+        goods_detail_url = gl.mi_url + "/mall/v1/web/goods/detail"
         goods_detail_params = {
             "app_id": 1,
             "point_sn": "myb",
@@ -198,11 +198,11 @@ async def get_goods_detail(goods_id, get_type=''):
         return_info.append(int(goods_detail['sale_start_time']))
         return return_info
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -213,26 +213,26 @@ async def get_action_ticket(account: UserInfo):
     """
     try:
         if account.stoken == "" or account.mys_uid == "":
-            print("缺少stoken或账户ID，请重新获取cookie")
+            logger.warning("缺少stoken或账户ID，请重新获取cookie")
             return False
-        action_ticket_url = gl.MI_URL + "/auth/api/getActionTicketBySToken"
+        action_ticket_url = gl.mi_url + "/auth/api/getActionTicketBySToken"
         action_ticket_params = {"action_type": "game_role", "stoken": account.stoken, "uid": account.mys_uid}
         async with httpx.AsyncClient() as client:
             action_ticket_req = await client.get(action_ticket_url, params=action_ticket_params)
         if action_ticket_req.status_code != 200:
-            print(
+            logger.error(
                 f"ticket请求失败, 请检查cookie, 返回状态码为{str(action_ticket_req.status_code)}")
             return False
         if action_ticket_req.json()['data'] is None:
-            print(f"ticket获取失败, 原因为{action_ticket_req.json()['message']}")
+            logger.error(f"ticket获取失败, 原因为{action_ticket_req.json()['message']}")
             return False
         return action_ticket_req.json()['data']['ticket']
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -244,7 +244,7 @@ async def check_game_roles(account: UserInfo, game_biz='', uid=0, get_type='get'
         action_ticket = await get_action_ticket(account)
         if not action_ticket:
             return False
-        game_roles_url = gl.MI_URL + "/binding/api/getUserGameRoles"
+        game_roles_url = gl.mi_url + "/binding/api/getUserGameRoles"
         game_roles_params = {"point_sn": "myb", "action_ticket": action_ticket}
         if get_type == 'check':
             game_roles_params['uid'] = uid
@@ -254,16 +254,16 @@ async def check_game_roles(account: UserInfo, game_biz='', uid=0, get_type='get'
                                               headers=game_roles_headers,
                                               params=game_roles_params)
         if game_roles_req.status_code != 200:
-            print(
+            logger.error(
                 f"检查绑定角色请求失败, 请检查传入参数, 返回状态码为{str(game_roles_req.status_code)}")
             return False
         game_roles_req = game_roles_req.json()
         if game_roles_req['retcode'] != 0:
-            print(f"检查绑定角色失败, 原因为{game_roles_req['message']}")
+            logger.error(f"检查绑定角色失败, 原因为{game_roles_req['message']}")
             return False
         game_roles_list = game_roles_req['data']['list']
         if not game_roles_list:
-            print('没有绑定任何角色')
+            logger.info('没有绑定任何角色')
             return False
         if get_type == 'get':
             game_roles_new_list = []
@@ -279,12 +279,12 @@ async def check_game_roles(account: UserInfo, game_biz='', uid=0, get_type='get'
         for game_roles in game_roles_list:
             if game_roles['game_biz'] == game_biz and game_roles['game_uid'] == str(uid):
                 return True
-        print('没有绑定该游戏角色')
+        logger.info('没有绑定该游戏角色')
         return False
     except KeyboardInterrupt:
-        print("用户强制退出")
+        logger.warning("用户强制退出")
         input("按回车键继续")
         sys.exit()
     except Exception as err:
-        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
