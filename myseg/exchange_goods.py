@@ -115,10 +115,11 @@ async def init_task():
                 continue
             try:
                 exchange_data_dict[goods_key] = ExchangeInfo(goods_data, goods_detail)
-            # 输出到日志
-            except KeyError:
+            except KeyError as err:
+                logger.error(f"商品 {goods_key} -{goods_name} 添加失败, 错误信息为{err}")
                 continue
-            except ValueError:
+            except ValueError as err:
+                logger.error(f"商品 {goods_key} -{goods_name} 添加失败, 错误信息为{err}")
                 error_list.append(goods_key)
                 continue
         if error_list:

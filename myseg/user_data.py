@@ -420,7 +420,9 @@ class ExchangeInfo:
         检查商品兑换信息
         """
         now_time = int(self.__get_time(self.__ntp_enable, self.__ntp_server))
-        if self.exchange_time < now_time:
+        if self.exchange_time == -1:
+            self.exchange_time = now_time + 300
+        elif self.exchange_time < now_time:
             raise ValueError(f"商品 {self.goods_name} 兑换时间已过, 已自动跳过")
         if self.goods_biz != "bbs_cn" and self.goods_type == 2 \
                 and (self.mys_uid == self.game_id or self.game_region == ''):
