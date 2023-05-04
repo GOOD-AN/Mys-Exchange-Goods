@@ -36,13 +36,13 @@ log_config = {
         }
     },
     "loggers": {
-        "info_file_logger": {
+        "info_all_logger": {
             "handlers": ["standard_console", "standard_file"],
             "level": "INFO",
             "propagate": False
         },
-        "debug_file_logger": {
-            "handlers": ["standard_console", "standard_file"],
+        "debug_all_logger": {
+            "handlers": ["debug_console", "standard_file"],
             "level": "DEBUG",
             "propagate": False
         },
@@ -54,6 +54,11 @@ log_config = {
         "debug_console_logger": {
             "handlers": ["debug_console"],
             "level": "DEBUG",
+            "propagate": False
+        },
+        "only_file_logger": {
+            "handlers": ["standard_file"],
+            "level": "INFO",
             "propagate": False
         }
     },

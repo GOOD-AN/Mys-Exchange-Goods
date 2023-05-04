@@ -1,6 +1,6 @@
 {
     "least_version": "3.0.0",
-    "last_version": "3.0.0",
+    "last_version": "3.0.1",
     "update_log":[
         {
             "version": "1.0.0",
@@ -54,8 +54,13 @@
         },
         {
             "version": "3.0.0",
-            "update_time": "2023-04-20",
+            "update_time": "2023-05-03",
             "update_content": ["1.更新项目结构", "2.更新异步定时任务", "3.添加多账号支持"]
+        },
+        {
+            "version": "3.0.1",
+            "update_time": "2023-05-04",
+            "update_content": ["1.添加日志配置"]
         }
     ]
 }

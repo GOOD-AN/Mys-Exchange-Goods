@@ -8,11 +8,11 @@ import sys
 import time
 from getpass import getuser
 
-from myseg import async_input, check_update, init_config, info_menu, init_exchange, wait_tasks
+from myseg import async_input, check_update, info_menu, init_exchange, wait_tasks
 from myseg import check_cookie, update_cookie
-from myseg import global_var as gl, logger
+from myseg import user_global_var as gl, logger
 
-MAIN_VERSION = '3.0.0'
+MAIN_VERSION = '3.0.1'
 MESSAGE = f"""\
 ===========================================
 |        Mys Exchange Goods v{MAIN_VERSION:13s}|
@@ -148,7 +148,6 @@ def start_info():
 
 if __name__ == '__main__':
     try:
-        init_config()  # 需优化
         start_info()
         if gl.init_config.getboolean("update_setting", "check_enable"):
             asyncio.run(check_update(MAIN_VERSION))

@@ -3,17 +3,14 @@
 """
 import asyncio
 import json
-import platform
 import sys
 import time
-from configparser import ConfigParser
 from hashlib import md5
-from shutil import copyfile
 
 import httpx
+from ntplib import NTPClient
 
-from . import global_var as gl, logger
-from .user_data import GameInfo, AddressInfo, UserInfo
+from . import user_global_var as gl, logger, logger_file
 
 CHECK_UPDATE_URL_LIST = [
     'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
@@ -22,48 +19,19 @@ CHECK_UPDATE_URL_LIST = [
 ]
 
 
-def check_plat():
+def get_time() -> float:
     """
-    检查平台
+    获取当前时间
     """
     try:
-        if platform.system() == "Windows":
-            return "cls"
-        return "clear"
-    except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
-        sys.exit()
+        ntp_enable = gl.init_config.getboolean('ntp', 'enable')
+        ntp_server = gl.init_config.get('ntp', 'ntp_server')
+        if not ntp_enable:
+            return time.time()
+        return NTPClient().request(ntp_server).tx_time
     except Exception as err:
-        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
-        sys.exit()
-
-
-def load_config():
-    """
-    加载配置文件
-    """
-    config_data = ConfigParser()
-    try:
-        config_path = gl.config_path / 'config.ini'
-        default_config_path = gl.config_path / 'default_config.ini'
-        if not config_path.exists() and not default_config_path.exists():
-            logger.error("配置文件不存在, 请检查")
-            input("按回车键继续")
-            sys.exit()
-        if not config_path.exists() and default_config_path.exists():
-            copyfile(default_config_path, config_path)
-        config_data.read_file(open(config_path, "r", encoding="utf-8"))
-        return config_data
-    except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
-        sys.exit()
-    except Exception as err:
-        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
-        sys.exit()
+        logger_file.warning(f"网络时间获取失败, 原因为{err}, 转为本地时间")
+        return time.time()
 
 
 async def compare_version(old_version, new_version):
@@ -165,61 +133,6 @@ async def md5_encode(text):
     except Exception as err:
         logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         await async_input("按回车键继续")
-        sys.exit()
-
-
-def load_user_data():
-    """
-    加载用户数据
-    """
-    try:
-        user_data_dict = {}
-        if gl.user_data_path.exists():
-            user_data_file_list = gl.user_data_path.iterdir()
-            for user_data_file in user_data_file_list:
-                with open(gl.user_data_path / user_data_file, 'r', encoding='utf-8') as f:
-                    try:
-                        user_data = json.load(f)
-                        user_game_list = []
-                        user_address_list = []
-                        for user_game in user_data['game_list']:
-                            user_game_list.append(GameInfo(user_game))
-                        user_data['game_list'] = user_game_list
-                        for user_address in user_data['address_list']:
-                            user_address_list.append(AddressInfo(user_address))
-                        user_data['address_list'] = user_address_list
-                        user_data_dict[user_data['mys_uid']] = UserInfo(user_data)
-                    except (json.decoder.JSONDecodeError, KeyError) as err:
-                        logger.warning(f"用户数据{user_data_file}解析失败, 跳过, ", end='')
-                        logger.warning(f"错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-                        continue
-        return user_data_dict
-    except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
-        sys.exit()
-    except Exception as err:
-        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
-        sys.exit()
-
-
-def init_config():
-    """
-    初始化配置文件
-    """
-    try:
-        gl.init_config = load_config()
-        gl.clear_type = check_plat()
-        gl.user_dict = load_user_data()
-        return True
-    except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
-        sys.exit()
-    except Exception as err:
-        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        input("按回车键继续")
         sys.exit()
 
 
