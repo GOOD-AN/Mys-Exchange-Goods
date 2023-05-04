@@ -10,7 +10,7 @@ import time
 
 import httpx
 
-from . import global_var as gl, logger
+from . import user_global_var as gl, logger
 from .com_tool import md5_encode
 from .user_data import UserInfo, GameInfo, ClassEncoder
 

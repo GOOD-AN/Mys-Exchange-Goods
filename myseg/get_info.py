@@ -12,11 +12,12 @@ import httpx
 import pyperclip
 from apscheduler.events import EVENT_JOB_ADDED, EVENT_JOB_MODIFIED, EVENT_JOB_MISSED, EVENT_JOB_REMOVED
 
-from . import global_var as gl, async_input, scheduler, logger
+from . import user_global_var as gl, scheduler, logger, logger_file
 from .exchange_goods import run_task
 from .mi_tool import GAME_NAME, MYS_CHANNEL
 from .mi_tool import update_cookie, get_goods_detail, check_game_roles, get_point
 from .user_data import UserInfo, AddressInfo, ClassEncoder, GoodsInfo
+from .com_tool import async_input, get_time
 
 
 async def select_user(select_user_data: dict):
@@ -30,6 +31,7 @@ async def select_user(select_user_data: dict):
             print(f"1. {mys_id}")
         if len(select_user_data) == 1:
             print("仅有一个用户")
+            logger_file.info(f"仅有一个用户{select_user_data_key[0]}")
             return select_user_data[select_user_data_key[0]]
         select_user_id = 0
         while True:
@@ -357,7 +359,7 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                         elif account.mys_uid + account.mys_uid + now_goods.goods_id in old_data:
                             exist_flag = True
                         if exist_flag:
-                            logger.info(f"商品{now_goods.goods_name}已经在兑换列表中, 跳过", end=", ")
+                            logger.info(f"商品{now_goods.goods_name}已经在兑换列表中, 跳过")
                             print("如需修改信息, 请稍后使用修改兑换信息功能修改")
                             continue
                         if 1 in now_goods.goods_rule:
@@ -388,8 +390,9 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                                 if account_game.game_biz == game_biz and account_game.game_level >= limit_level:
                                     select_account_game.append(account_game)
                             if not select_account_game:
-                                logger.info(f"商品{now_goods.goods_name}兑换要求{GAME_NAME[game_biz]}等级为: {limit_level}, "
-                                      f"未找到符合条件的账号, 跳过兑换")
+                                logger.info(
+                                    f"商品{now_goods.goods_name}兑换要求{GAME_NAME[game_biz]}等级为: {limit_level}, "
+                                    f"未找到符合条件的账号, 跳过兑换")
                                 print(
                                     "请前往米游社APP绑定满足要求的账号, 如信息错误或需要更新绑定信息, 请稍后使用更新游戏账号信息功能")
                                 continue
@@ -474,8 +477,11 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                 with open(exchange_file_path, "w", encoding="utf-8") as f:
                     json.dump(old_data, f, ensure_ascii=False, indent=4)
                 for task_key, task_value in goods_select_dict.items():
+                    run_time = task_value['exchange_time']
+                    if run_time == -1:
+                        run_time = int(get_time() + 300)
                     scheduler.add_job(id=task_key, trigger='date', func=run_task, args=[task_value],
-                                      next_run_time=datetime.fromtimestamp(task_value['exchange_time']))
+                                      next_run_time=datetime.fromtimestamp(run_time))
                 logger.info("商品添加成功")
                 await async_input("按回车键继续")
                 return True
@@ -580,9 +586,10 @@ async def get_goods_list(account: UserInfo, use_type: str = "set"):
                             print("商品库存: 无限")
                             goods_class.goods_num = -1
                         else:
-                            goods_class.goods_num = goods_data['next_num'] or goods_data['total']
+                            goods_class.goods_num = goods_data['total'] or goods_data['next_num']
                             print(f"商品库存: {goods_class.goods_num}")
-                        if goods_data['next_time'] == 0:
+                        if goods_data['next_time'] == 0 or \
+                                (goods_data['next_time'] > time.time() and goods_data['total'] > 0):
                             print("商品兑换时间: 任何时段")
                             goods_class.goods_time = -1
                         else:
@@ -663,13 +670,13 @@ def scheduler_get_listener(event):
     """
     try:
         if event.code == EVENT_JOB_ADDED:
-            logger.info(f"任务 {event.job_id} 已添加")
+            print(f"任务 {event.job_id} 已添加")
         elif event.code == EVENT_JOB_REMOVED:
-            logger.info(f"任务 {event.job_id} 已删除")
+            print(f"任务 {event.job_id} 已删除")
         elif event.code == EVENT_JOB_MODIFIED:
-            logger.info(f"任务 {event.job_id} 已修改")
+            print(f"任务 {event.job_id} 已修改")
         elif event.code == EVENT_JOB_MISSED:
-            logger.warning(f"任务 {event.job_id} 已错过")
+            print(f"任务 {event.job_id} 已错过")
     except Exception as err:
         logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
@@ -780,7 +787,7 @@ async def info_menu():
                     logger.info("更新频道等级信息成功")
             elif select_function == "9":
                 if gl.user_dict:
-                    account = select_user(gl.user_dict)
+                    account = await select_user(gl.user_dict)
                 else:
                     logger.warning("暂无账户信息, 请先获取账户信息")
             elif select_function == "0":

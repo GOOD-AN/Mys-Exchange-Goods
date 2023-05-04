@@ -3,12 +3,7 @@
 """
 import json
 import re
-import time
 from typing import Union
-
-from ntplib import NTPClient
-
-from . import global_var as gl, logger
 
 
 class ClassEncoder(json.JSONEncoder):
@@ -396,7 +391,7 @@ class ExchangeInfo:
     兑换商品信息
     """
 
-    def __init__(self, goods_info: dict, goods_detail=None):
+    def __init__(self, goods_info: dict, goods_detail=None, now_time=None):
         """
         初始化商品信息
         """
@@ -411,16 +406,16 @@ class ExchangeInfo:
         self.address_id = goods_info['address_id'] if 'address_id' in goods_info else ''
         self.exchange_time = goods_info['exchange_time']
         self.__goods_detail = goods_detail
-        self.__ntp_enable = gl.init_config.getboolean('ntp', 'enable')
-        self.__ntp_server = gl.init_config.get('ntp', 'ntp_server')
+        self.__now_time = now_time
         self.__check_info()
 
     def __check_info(self):
         """
         检查商品兑换信息
         """
-        now_time = int(self.__get_time(self.__ntp_enable, self.__ntp_server))
-        if self.exchange_time < now_time:
+        if self.exchange_time == -1:
+            self.exchange_time = self.__now_time + 300
+        elif self.exchange_time < self.__now_time:
             raise ValueError(f"商品 {self.goods_name} 兑换时间已过, 已自动跳过")
         if self.goods_biz != "bbs_cn" and self.goods_type == 2 \
                 and (self.mys_uid == self.game_id or self.game_region == ''):
@@ -429,19 +424,6 @@ class ExchangeInfo:
             raise ValueError(f"商品 {self.goods_name} 为实物, 但收货地址不存在, 已自动跳过")
         if self.__goods_detail == -1:
             raise ValueError(f"商品 {self.goods_name} 已售罄, 已自动跳过")
-
-    @staticmethod
-    def __get_time(ntp_enable, ntp_server) -> float:
-        """
-        获取当前时间
-        """
-        try:
-            if not ntp_enable:
-                return time.time()
-            return NTPClient().request(ntp_server).tx_time
-        except Exception as err:
-            logger.warning(f"网络时间获取失败, 原因为{err}, 转为本地时间")
-            return time.time()
 
     @property
     def mys_uid(self) -> str:

@@ -9,8 +9,9 @@ from datetime import datetime
 import httpx
 from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
 
-from . import global_var as gl, async_input, logger
+from . import user_global_var as gl, logger, logger_file
 from . import scheduler
+from .com_tool import async_input, get_time
 from .mi_tool import get_goods_detail
 from .user_data import ExchangeInfo
 
@@ -48,11 +49,11 @@ async def post_exchange_gift(cookie, goods_id, uid, biz, region, address_id, goo
         if exchange_goods_req == '':
             return [False, str(goods_id), goods_name]
         if exchange_goods_req.status_code != 200:
-            logger.info(f"商品 {goods_id} -{goods_name} 兑换失败, 错误码为{exchange_goods_req.status_code}")
+            logger_file.info(f"商品 {goods_id} -{goods_name} 兑换失败, 错误码为{exchange_goods_req.status_code}")
             return [False, str(goods_id), goods_name]
         exchange_goods_req_json = exchange_goods_req.json()
         if exchange_goods_req_json['data'] is None:
-            logger.info(f"商品 {goods_id} -{goods_name} 兑换失败, 错误信息为{exchange_goods_req_json['message']}")
+            logger_file.info(f"商品 {goods_id} -{goods_name} 兑换失败, 错误信息为{exchange_goods_req_json['message']}")
             return [False, str(goods_id), goods_name]
         return [True, str(goods_id), goods_name, exchange_goods_req_json['data']['order_sn']]
     except KeyboardInterrupt:
@@ -81,7 +82,8 @@ async def run_task(task_data):
             await task
         success_list = list(filter(lambda x: x.result()[0], task_list))
         if success_list:
-            logger.info(f"商品 {task_list[0].result()[2]} 兑换成功, 订单号为{task_list[0].result()[3]}, 请前往米游社APP查看")
+            logger.info(
+                f"商品 {task_list[0].result()[2]} 兑换成功, 订单号为{task_list[0].result()[3]}, 请前往米游社APP查看")
         else:
             logger.info(f"商品 {task_list[0].result()[2]} 兑换失败")
     except KeyboardInterrupt:
@@ -114,15 +116,17 @@ async def init_task():
             if not goods_detail:
                 continue
             try:
-                exchange_data_dict[goods_key] = ExchangeInfo(goods_data, goods_detail)
-            # 输出到日志
-            except KeyError:
+                exchange_data_dict[goods_key] = ExchangeInfo(goods_data, goods_detail, get_time())
+            except KeyError as err:
+                logger_file.error(f"商品 {goods_key} -{goods_name} 添加失败, 错误信息为{err}")
                 continue
-            except ValueError:
+            except ValueError as err:
+                logger_file.error(f"商品 {goods_key} -{goods_name} 添加失败, 错误信息为{err}")
                 error_list.append(goods_key)
                 continue
         if error_list:
             for error_key in error_list:
+                logger_file.info(f"商品 {error_key} -{goods_data_dict[error_key]['goods_name']} 失效删除")
                 del goods_data_dict[error_key]
             with open(exchange_file_path, "w", encoding="utf-8") as exchange_file:
                 json.dump(goods_data_dict, exchange_file, ensure_ascii=False, indent=4)
@@ -166,11 +170,11 @@ def scheduler_wait_listener(event):
     """
     try:
         if event.code == EVENT_JOB_MISSED:
-            logger.warning(f"任务 {event.job_id} 已错过")
+            print(f"任务 {event.job_id} 已错过")
         elif event.code == EVENT_JOB_ERROR:
-            logger.error(f"任务 {event.job_id} 运行出错, 错误为: {event.exception}")
+            print(f"任务 {event.job_id} 运行出错, 错误为: {event.exception}")
         elif event.code == EVENT_JOB_EXECUTED:
-            logger.info(f"任务 {event.job_id} 已执行")
+            print(f"任务 {event.job_id} 已执行")
             scheduler_list = scheduler.get_jobs()
             if scheduler_list:
                 print(f"下次运行时间为: {scheduler_list[0].next_run_time}")
