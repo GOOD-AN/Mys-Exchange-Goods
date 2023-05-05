@@ -12,7 +12,7 @@ from myseg import async_input, check_update, info_menu, init_exchange, wait_task
 from myseg import check_cookie, update_cookie
 from myseg import user_global_var as gl, logger
 
-MAIN_VERSION = '3.0.1'
+MAIN_VERSION = '3.0.2'
 MESSAGE = f"""\
 ===========================================
 |        Mys Exchange Goods v{MAIN_VERSION:13s}|
