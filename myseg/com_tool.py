@@ -11,6 +11,7 @@ import httpx
 from ntplib import NTPClient
 
 from . import user_global_var as gl, logger, logger_file
+from .user_data import ClassEncoder
 
 CHECK_UPDATE_URL_LIST = [
     'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
@@ -69,7 +70,7 @@ async def check_update(main_version):
             for check_update_url in CHECK_UPDATE_URL_LIST:
                 check_url = check_update_url + "update_log.json"
                 try:
-                    async with httpx.AsyncClient() as client:
+                    async with httpx.AsyncClient(follow_redirects=True) as client:
                         check_info = await client.get(check_url, timeout=5)
                         check_info = check_info.json()
                     break
@@ -145,3 +146,25 @@ async def async_input(prompt=''):
     except AttributeError:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, input, prompt)
+
+
+async def save_file(account, class_var, info_list, log_info):
+    """
+    保存文件数据
+    """
+    try:
+        if info_list:
+            setattr(account, class_var, info_list)
+            with open(gl.user_data_path / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
+                json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
+            logger.info(f"更新{log_info}信息成功")
+        else:
+            logger.info(f"未获取到{log_info}信息")
+        return True
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"保存文件失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False

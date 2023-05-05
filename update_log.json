@@ -61,6 +61,11 @@
             "version": "3.0.1",
             "update_time": "2023-05-04",
             "update_content": ["1.添加日志配置"]
+        },
+        {
+            "version": "3.0.2",
+            "update_time": "2023-05-05",
+            "update_content": ["1.添加星铁兑换项目", "2.修复部分错误"]
         }
     ]
 }
