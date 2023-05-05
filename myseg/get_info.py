@@ -236,6 +236,7 @@ async def get_exchange_data():
     """
     try:
         exchange_file_path = gl.data_path / 'exchange_list.json'
+        old_data = {}
         if exchange_file_path.exists():
             with open(exchange_file_path, "r", encoding="utf-8") as exchange_file:
                 try:
@@ -782,7 +783,7 @@ async def info_menu():
                 channel_data_dict = await get_channel_level(account)
                 if channel_data_dict:
                     account.channel_dict = channel_data_dict
-                    with open(gl.USER_DATA_PATH / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
+                    with open(gl.user_data_path / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
                         json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                     logger.info("更新频道等级信息成功")
             elif select_function == "9":
