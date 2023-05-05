@@ -13,11 +13,11 @@ import pyperclip
 from apscheduler.events import EVENT_JOB_ADDED, EVENT_JOB_MODIFIED, EVENT_JOB_MISSED, EVENT_JOB_REMOVED
 
 from . import user_global_var as gl, scheduler, logger, logger_file
+from .com_tool import async_input, get_time, save_file
 from .exchange_goods import run_task
 from .mi_tool import GAME_NAME, MYS_CHANNEL
 from .mi_tool import update_cookie, get_goods_detail, check_game_roles, get_point
 from .user_data import UserInfo, AddressInfo, ClassEncoder, GoodsInfo
-from .com_tool import async_input, get_time
 
 
 async def select_user(select_user_data: dict):
@@ -518,7 +518,8 @@ async def get_goods_list(account: UserInfo, use_type: str = "set"):
 3.原神
 4.崩坏学园2
 5.未定事件簿
-6.米游社
+6.崩坏：星穹铁道
+7.米游社
 0.返回上一级""")
             game_choice = await async_input("请输入需要查询的序号: ")
             game_type_dict = {
@@ -527,7 +528,8 @@ async def get_goods_list(account: UserInfo, use_type: str = "set"):
                 "3": "hk4e",
                 "4": "bh2",
                 "5": "nxx",
-                "6": "bbs",
+                "6": "hkrpg",
+                "7": "bbs"
             }
             if game_choice == "0":
                 return None
@@ -755,37 +757,14 @@ async def info_menu():
                     print(f"当前米游币数量: {now_point}")
                 else:
                     logger.info("未获取到米游币数量")
-            # 待优化
             elif select_function == "5":
-                update_result = await update_cookie(account)
-                if update_result:
-                    account.cookie = update_result
-                    logger.info("cookie更新成功")
+                await save_file(account, "cookie", await update_cookie(account), "Cookie")
             elif select_function == "6":
-                game_info_list = await check_game_roles(account)
-                if game_info_list:
-                    account.game_list = game_info_list
-                    with open(gl.user_data_path / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
-                        json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
-                    logger.info("更新游戏账号信息成功")
-                else:
-                    logger.info("未获取到游戏账号信息")
+                await save_file(account, "game_list", await check_game_roles(account), "游戏账号")
             elif select_function == "7":
-                address_list = await get_address(account)
-                if address_list:
-                    account.address_list = address_list
-                    with open(gl.user_data_path / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
-                        json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
-                    logger.info("更新收货地址信息成功")
-                else:
-                    logger.info("未获取到收货地址信息")
+                await save_file(account, "address_list", await get_address(account), "收货地址")
             elif select_function == "8":
-                channel_data_dict = await get_channel_level(account)
-                if channel_data_dict:
-                    account.channel_dict = channel_data_dict
-                    with open(gl.user_data_path / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
-                        json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
-                    logger.info("更新频道等级信息成功")
+                await save_file(account, "channel_dict", await get_channel_level(account), "频道等级")
             elif select_function == "9":
                 if gl.user_dict:
                     account = await select_user(gl.user_dict)
