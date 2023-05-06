@@ -17,7 +17,7 @@ from .com_tool import async_input, get_time, save_file
 from .exchange_goods import run_task
 from .mi_tool import GAME_NAME, MYS_CHANNEL
 from .mi_tool import update_cookie, get_goods_detail, check_game_roles, get_point
-from .user_data import UserInfo, AddressInfo, ClassEncoder, GoodsInfo
+from .data_class import UserInfo, AddressInfo, ClassEncoder, GoodsInfo
 
 
 async def select_user(select_user_data: dict):
@@ -82,7 +82,13 @@ async def get_cookie():
         }
         # 获取第一个 cookie
         async with httpx.AsyncClient() as client:
-            login_user_req_one = await client.post(login_user_url_one, data=login_user_form_data_one)
+            while True:
+                login_user_req_one = await client.post(login_user_url_one, data=login_user_form_data_one)
+                status_code = login_user_req_one.json()['data']['status']
+                if status_code == -201:
+                    login_user_form_data_one['mobile_captcha'] = await async_input("验证码错误, 请重新输入: ")
+                else:
+                    break
         login_user_cookie_one = login_user_req_one.cookies
         if "login_ticket" not in login_user_cookie_one:
             logger.warning("缺少'login_ticket'字段, 请重新获取")
@@ -128,7 +134,13 @@ async def get_cookie():
             "token_type": 6
         }
         async with httpx.AsyncClient() as client:
-            login_user_req_two = await client.post(login_user_url_two, json=login_user_form_data_two)
+            while True:
+                login_user_req_two = await client.post(login_user_url_two, json=login_user_form_data_two)
+                status_code = login_user_req_two.json()['retcode']
+                if status_code == -201:
+                    login_user_form_data_two['captcha'] = await async_input("验证码错误, 请重新输入: ")
+                else:
+                    break
         login_user_cookie_two = login_user_req_two.cookies
         if "cookie_token" not in login_user_cookie_two:
             logger.warning("缺少'cookie_token'字段, 请重新获取")
@@ -219,7 +231,7 @@ async def get_address(account: UserInfo):
                                 'city_name': address_data['city_name'],
                                 'county_name': address_data['county_name'],
                                 'addr_ext': address_data['addr_ext']}
-            address_new_list.append(AddressInfo(address_new_dict))
+            address_new_list.append(AddressInfo(**address_new_dict))
         return address_new_list
     except KeyboardInterrupt:
         logger.warning("用户强制退出")
@@ -350,9 +362,9 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                 for goods_id in goods_id_in:
                     if goods_id.isdigit() and 0 < int(goods_id) < goods_num:
                         now_goods = goods_class_list[int(goods_id) - 1]
-                        # 需添加判断
+                        logger.debug(now_goods)
                         exist_flag = False
-                        if now_goods.game_biz != 'bbs_cn' and now_goods.goods_type == 2:
+                        if now_goods.goods_biz != 'bbs_cn' and now_goods.goods_type == 2:
                             for game_info in account.game_list:
                                 if account.mys_uid + game_info.game_uid + now_goods.goods_id in old_data:
                                     exist_flag = True
@@ -378,7 +390,7 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                             "goods_id": now_goods.goods_id,
                             "goods_name": now_goods.goods_name,
                             "goods_type": now_goods.goods_type,
-                            "goods_biz": now_goods.game_biz,
+                            "goods_biz": now_goods.goods_biz,
                             "exchange_time": now_goods.goods_time,
                             "game_id": account.mys_uid
                         }
@@ -386,7 +398,7 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                         if 2 in now_goods.goods_rule:
                             limit_level = int(now_goods.goods_rule[2][0])
                         select_account_game = []
-                        if now_goods.game_biz != 'bbs_cn':
+                        if now_goods.goods_biz != 'bbs_cn':
                             for account_game in account.game_list:
                                 if account_game.game_biz == game_biz and account_game.game_level >= limit_level:
                                     select_account_game.append(account_game)
@@ -397,7 +409,7 @@ async def select_goods(account: UserInfo, goods_num, goods_class_list, user_poin
                                 print(
                                     "请前往米游社APP绑定满足要求的账号, 如信息错误或需要更新绑定信息, 请稍后使用更新游戏账号信息功能")
                                 continue
-                        if now_goods.game_biz != 'bbs_cn' and now_goods.goods_type == 2:
+                        if now_goods.goods_biz != 'bbs_cn' and now_goods.goods_type == 2:
                             account_game_num = 1
                             for account_game in select_account_game:
                                 print("-" * 25)
@@ -583,7 +595,7 @@ async def get_goods_list(account: UserInfo, use_type: str = "set"):
                         goods_class.goods_name = goods_data['goods_name']
                         goods_class.goods_price = goods_data['price']
                         goods_class.goods_type = goods_type
-                        goods_class.game_biz = game_biz
+                        goods_class.goods_biz = game_biz
                         goods_class.goods_rule = goods_rule
                         if goods_data['total'] == 0 and goods_data['next_num'] == 0:
                             print("商品库存: 无限")
@@ -631,32 +643,26 @@ async def get_user_info():
     获取用户信息
     """
     try:
-        user_info_json = {}
         user_cookie, mys_uid = await get_cookie()
-        new_user = UserInfo([mys_uid, user_cookie])
-        user_info_json['mys_uid'] = mys_uid
-        user_info_json['cookie'] = user_cookie
+        new_user = UserInfo(**{'mys_uid': mys_uid, 'cookie': user_cookie})
         logger.info("等待获取其他信息")
         channel_data_dict = await get_channel_level(new_user)
         game_info_list = await check_game_roles(new_user)
         address_list = await get_address(new_user)
-        user_info_json['game_list'] = []
-        user_info_json['address_list'] = []
         if game_info_list:
-            user_info_json['game_list'] = game_info_list
             new_user.game_list = game_info_list
         if address_list:
-            user_info_json['address_list'] = address_list
             new_user.address_list = address_list
         if channel_data_dict:
-            user_info_json['channel_dict'] = channel_data_dict
             new_user.channel_dict = channel_data_dict
-        if user_info_json:
+        if new_user.is_not_none:
             if not gl.user_data_path.exists():
                 gl.user_data_path.mkdir(parents=True, exist_ok=True)
             with open(gl.user_data_path / f"{mys_uid}.json", 'w', encoding='utf-8') as f:
-                json.dump(user_info_json, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
+                json.dump(new_user, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
                 gl.user_dict[mys_uid] = new_user
+        else:
+            new_user = UserInfo()
         return new_user
     except KeyboardInterrupt:
         logger.warning("用户强制退出")
@@ -692,7 +698,7 @@ async def info_menu():
     try:
         scheduler.add_listener(scheduler_get_listener,
                                EVENT_JOB_ADDED | EVENT_JOB_REMOVED | EVENT_JOB_MODIFIED | EVENT_JOB_MISSED)
-        account = UserInfo(None)
+        account = UserInfo()
         if gl.user_dict:
             account = await select_user(gl.user_dict)
             await async_input("按回车键继续")
@@ -714,7 +720,7 @@ async def info_menu():
             os.system(gl.clear_type)
             if select_function == "1":
                 new_account = await get_user_info()
-                if new_account:
+                if new_account.is_not_none:
                     account = new_account
                     logger.info(f"获取账户信息成功, 已切换用户为{account.mys_uid}")
                 else:

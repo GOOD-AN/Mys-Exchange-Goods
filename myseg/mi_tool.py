@@ -12,7 +12,7 @@ import httpx
 
 from . import user_global_var as gl, logger
 from .com_tool import md5_encode
-from .user_data import UserInfo, GameInfo, ClassEncoder
+from .data_class import UserInfo, GameInfo, ClassEncoder
 
 MYS_SALT = "TsmyHpZg8gFAVKTtlPaL6YwMldzxZJxQ"
 MYS_SALT_TWO = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v"
@@ -31,6 +31,7 @@ GAME_NAME = {
     "bh3_cn": "崩坏3",
     "nxx_cn": "未定事件簿",
     "hk4e_cn": "原神",
+    "hkrpg_cn": "崩坏：星穹铁道"
 }
 
 
@@ -274,7 +275,7 @@ async def check_game_roles(account: UserInfo, game_biz='', uid=0, get_type='get'
                                        'game_level': game_roles['level'],
                                        'game_region': game_roles['region'],
                                        'game_region_name': game_roles['region_name']}
-                game_roles_new_list.append(GameInfo(game_roles_new_dict))
+                game_roles_new_list.append(GameInfo(**game_roles_new_dict))
             return game_roles_new_list
         for game_roles in game_roles_list:
             if game_roles['game_biz'] == game_biz and game_roles['game_uid'] == str(uid):

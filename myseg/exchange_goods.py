@@ -9,11 +9,11 @@ from datetime import datetime
 import httpx
 from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
 
-from . import user_global_var as gl, logger, logger_file
 from . import scheduler
+from . import user_global_var as gl, logger, logger_file
 from .com_tool import async_input, get_time
+from .data_class import ExchangeInfo
 from .mi_tool import get_goods_detail
-from .user_data import ExchangeInfo
 
 
 async def post_exchange_gift(cookie, goods_id, uid, biz, region, address_id, goods_name):
@@ -65,7 +65,7 @@ async def post_exchange_gift(cookie, goods_id, uid, biz, region, address_id, goo
         return [False, str(goods_id), goods_name]
 
 
-async def run_task(task_data):
+async def run_task(task_id, task_data):
     """
     运行任务
     """
@@ -82,10 +82,24 @@ async def run_task(task_data):
             await task
         success_list = list(filter(lambda x: x.result()[0], task_list))
         if success_list:
+            logger.debug(success_list)
             logger.info(
-                f"商品 {task_list[0].result()[2]} 兑换成功, 订单号为{task_list[0].result()[3]}, 请前往米游社APP查看")
+                f"商品 {success_list[0].result()[2]} 兑换成功, 订单号为{success_list[0].result()[3]}, 请前往米游社APP查看")
         else:
             logger.info(f"商品 {task_list[0].result()[2]} 兑换失败")
+        with open(gl.data_path / 'exchange_list.json', "r", encoding="utf-8") as exchange_file:
+            try:
+                goods_data_dict = json.load(exchange_file)
+                del goods_data_dict[task_id]
+            except (KeyError, json.decoder.JSONDecodeError) as err:
+                logger_file.exception(f"删除任务失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        with open(gl.data_path / 'exchange_list.json', "w", encoding="utf-8") as exchange_file:
+            try:
+                json.dump(goods_data_dict, exchange_file, ensure_ascii=False, indent=4)
+                logger_file.info(f"删除任务 {task_id} 成功")
+            except Exception as err:
+                logger_file.exception(f"删除任务失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
     except KeyboardInterrupt:
         logger.warning("用户强制退出")
         input("按回车键继续")
@@ -112,11 +126,13 @@ async def init_task():
         error_list = []
         print("将会删除所有无法兑换的商品")
         for goods_key, goods_data in goods_data_dict.items():
-            goods_detail, goods_name = await get_goods_detail(goods_data['goods_id'], 'status')
-            if not goods_detail:
+            goods_status, goods_name = await get_goods_detail(goods_data['goods_id'], 'status')
+            if not goods_status:
                 continue
             try:
-                exchange_data_dict[goods_key] = ExchangeInfo(goods_data, goods_detail, get_time())
+                goods_data['goods_status'] = goods_status
+                goods_data['now_time'] = int(get_time())
+                exchange_data_dict[goods_key] = ExchangeInfo(**goods_data)
             except KeyError as err:
                 logger_file.error(f"商品 {goods_key} -{goods_name} 添加失败, 错误信息为{err}")
                 continue
@@ -152,7 +168,7 @@ async def init_exchange(flag=True):
         if not task_dict:
             return True
         for task_key, task_value in task_dict.items():
-            scheduler.add_job(id=task_key, trigger='date', func=run_task, args=[task_value],
+            scheduler.add_job(id=task_key, trigger='date', func=run_task, args=[task_key, task_value],
                               next_run_time=datetime.fromtimestamp(task_value.exchange_time))
         return True
     except KeyboardInterrupt:
@@ -192,7 +208,7 @@ async def wait_tasks():
     try:
         if not scheduler.get_jobs():
             logger.info("没有任务需要执行")
-            await async_input("按回车键返回主菜单")
+            await async_input("按回车键返回主菜单\n")
             return True
         print("正在等待任务完成")
         scheduler.add_listener(scheduler_wait_listener, EVENT_JOB_MISSED | EVENT_JOB_ERROR | EVENT_JOB_EXECUTED)

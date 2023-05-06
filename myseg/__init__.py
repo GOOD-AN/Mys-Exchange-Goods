@@ -12,7 +12,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from config import logging_config
 from .global_var import GlobalVar
-from .user_data import GameInfo, AddressInfo, UserInfo
+from .data_class import GameInfo, AddressInfo, UserInfo
 
 
 class Logger:
@@ -89,12 +89,12 @@ def load_user_data():
                         user_game_list = []
                         user_address_list = []
                         for user_game in user_data_load['game_list']:
-                            user_game_list.append(GameInfo(user_game))
+                            user_game_list.append(GameInfo(**user_game))
                         user_data_load['game_list'] = user_game_list
                         for user_address in user_data_load['address_list']:
-                            user_address_list.append(AddressInfo(user_address))
+                            user_address_list.append(AddressInfo(**user_address))
                         user_data_load['address_list'] = user_address_list
-                        user_data_dict[user_data_load['mys_uid']] = UserInfo(user_data_load)
+                        user_data_dict[user_data_load['mys_uid']] = UserInfo(**user_data_load)
                     except (json.decoder.JSONDecodeError, KeyError) as err:
                         logger.warning(f"用户数据{user_data_file}解析失败, 跳过, ")
                         logger_file.warning(f"错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")

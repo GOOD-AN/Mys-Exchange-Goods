@@ -11,7 +11,7 @@ import httpx
 from ntplib import NTPClient
 
 from . import user_global_var as gl, logger, logger_file
-from .user_data import ClassEncoder
+from .data_class import ClassEncoder
 
 CHECK_UPDATE_URL_LIST = [
     'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
