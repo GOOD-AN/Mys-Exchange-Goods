@@ -2,37 +2,22 @@
 通用函数
 """
 import asyncio
+import httpx
 import json
 import sys
 import time
 from hashlib import md5
+from typing import Union, Dict
 
-import httpx
-from ntplib import NTPClient
-
-from . import user_global_var as gl, logger, logger_file
-from .data_class import ClassEncoder
+from .data_class import ClassEncoder, UserInfo
+from .global_var import user_global_var as gl
+from .logging import logger
 
 CHECK_UPDATE_URL_LIST = [
     'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
     'https://fastly.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
     'https://github.com/GOOD-AN/Mys-Exchange-Goods/raw/main/',
 ]
-
-
-def get_time() -> float:
-    """
-    获取当前时间
-    """
-    try:
-        ntp_enable = gl.init_config.getboolean('ntp', 'enable')
-        ntp_server = gl.init_config.get('ntp', 'ntp_server')
-        if not ntp_enable:
-            return time.time()
-        return NTPClient().request(ntp_server).tx_time
-    except Exception as err:
-        logger_file.warning(f"网络时间获取失败, 原因为{err}, 转为本地时间")
-        return time.time()
 
 
 async def compare_version(old_version, new_version):
@@ -148,19 +133,46 @@ async def async_input(prompt=''):
         return await loop.run_in_executor(None, input, prompt)
 
 
-async def save_file(account, class_var, info_list, log_info):
+async def save_user_file(save_data: UserInfo, log_info) -> Union[bool, UserInfo]:
     """
     保存文件数据
     """
     try:
-        if info_list:
-            setattr(account, class_var, info_list)
-            with open(gl.user_data_path / f"{account.mys_uid}.json", 'w', encoding='utf-8') as f:
-                json.dump(account, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
+        if save_data:
+            if not gl.user_data_path.exists():
+                gl.user_data_path.mkdir(parents=True, exist_ok=True)
+            with open(gl.user_data_path / f"{save_data.mys_uid}.json", 'w', encoding='utf-8') as f:
+                json.dump(save_data, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
             logger.info(f"更新{log_info}信息成功")
+            return save_data
         else:
-            logger.info(f"未获取到{log_info}信息")
-        return True
+            logger.info(f"获取到{log_info}信息失败")
+            return False
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"保存文件失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
+async def save_exchange_file(save_data: Dict) -> bool:
+    """
+    保存兑换文件数据
+    """
+    try:
+        if save_data:
+            exchange_file_path = gl.data_path / 'exchange_list.json'
+            if not exchange_file_path.exists():
+                exchange_file_path.mkdir(parents=True, exist_ok=True)
+            with open(exchange_file_path, 'w', encoding='utf-8') as f:
+                json.dump(save_data, f, ensure_ascii=False, indent=4)
+            logger.info(f"更新兑换信息成功")
+            return True
+        else:
+            logger.info(f"不存在兑换信息")
+            return False
     except KeyboardInterrupt:
         logger.warning("用户强制退出")
         input("按回车键继续")

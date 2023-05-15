@@ -3,9 +3,28 @@
 """
 import json
 import re
-from typing import List, Dict, Optional
-
+import time
+from ntplib import NTPClient
 from pydantic import BaseModel, validator, root_validator
+from typing import List, Dict, Optional, Literal, Union
+
+from .global_var import user_global_var as gl
+from .logging import logger_file
+
+
+def get_time() -> float:
+    """
+    获取当前时间
+    """
+    try:
+        ntp_enable = gl.init_config.getboolean('ntp', 'enable')
+        ntp_server = gl.init_config.get('ntp', 'ntp_server')
+        if not ntp_enable:
+            return time.time()
+        return NTPClient().request(ntp_server).tx_time
+    except Exception as err:
+        logger_file.warning(f"网络时间获取失败, 原因为{err}, 转为本地时间")
+        return time.time()
 
 
 class ClassEncoder(json.JSONEncoder):
@@ -18,37 +37,35 @@ class ClassEncoder(json.JSONEncoder):
         重写JSONEncoder以适应类
         """
         if isinstance(obj, (UserInfo, GameInfo, AddressInfo, ExchangeInfo, GoodsInfo)):
-            return obj.__dict__
+            return obj.dict()
         else:
             return json.JSONEncoder.default(self, obj)
-
-
-# 类创建需简化
 
 
 class GameInfo(BaseModel):
     """
     游戏账户信息
     """
-    game_biz: str
-    """游戏区服"""
+
     game_uid: str
     """游戏ID"""
-    game_nickname: str
-    """游戏昵称"""
-    game_level: int
-    """游戏等级"""
-    game_region: str
+    game_biz: str
     """游戏区服"""
-    game_region_name: str
-    """游戏区服名称"""
+    nickname: str
+    """游戏昵称"""
+    level: int
+    """游戏等级"""
+    region: str
+    """游戏次区服"""
+    region_name: str
+    """游戏次区服名称"""
 
 
 class AddressInfo(BaseModel):
     """
     地址信息
     """
-    address_id: str
+    id: str
     """地址ID"""
     connect_name: str
     """联系人姓名"""
@@ -140,44 +157,43 @@ class UserInfo(BaseModel):
         """
         return self.mys_uid is not None and self.cookie is not None and self.channel_dict is not None
 
+    def game_for_biz(self, biz: str) -> Optional[GameInfo]:
+        """
+        获取指定游戏区服的游戏账户信息
+        """
+        if self.game_list is None:
+            return None
+        for game in self.game_list:
+            if game.game_biz == biz:
+                return game
+        return None
+
 
 class ExchangeInfo(BaseModel):
     """
     兑换商品信息
     """
-    now_time: int
-    """当前时间"""
+
     mys_uid: str
     """兑换用户ID"""
     goods_id: str
     """商品ID"""
     goods_name: str
     """商品名称"""
-    goods_type: int
+    type: int
     """商品类型"""
-    goods_biz: str
+    game_biz: str
     """商品区服"""
     exchange_num: int
     """兑换数量"""
-    game_id: str
+    game_uid: str
     """游戏ID"""
-    game_region: Optional[str]
+    region: Optional[str]
     """游戏区服"""
     address_id: Optional[str]
     """地址ID"""
     exchange_time: int
     """兑换时间"""
-    goods_status = 0
-    """商品状态"""
-
-    @validator('goods_status')
-    def check_not_sold_out(cls, v, values):
-        """
-        检查商品是否已售罄
-        """
-        if v == -1:
-            raise ValueError(f"商品 {values['goods_name']} 已售罄, 已自动跳过")
-        return v
 
     @validator('exchange_time')
     def exchange_time_not_over_time(cls, v, values):
@@ -185,8 +201,8 @@ class ExchangeInfo(BaseModel):
         检查兑换时间是否已过
         """
         if v == -1:
-            return values['now_time'] + 5
-        elif v < values['now_time']:
+            return get_time() + 300
+        elif v < get_time():
             raise ValueError(f"商品 {values['goods_name']} 兑换时间已过, 已自动跳过")
         return v
 
@@ -195,10 +211,10 @@ class ExchangeInfo(BaseModel):
         """
         检查关键兑换信息是否存在
         """
-        if values['goods_biz'] != "bbs_cn" and values['goods_type'] == 2 \
-                and (values['mys_uid'] == values['game_id'] or values['game_region'] == ''):
+        if values['game_biz'] != "bbs_cn" and values['type'] == 2 \
+                and (values['mys_uid'] == values['game_uid'] or values['region'] == ''):
             raise ValueError(f"商品 {values['goods_name']} 游戏账户信息设置错误, 已自动跳过")
-        if (values['goods_type'] == 1 or values['goods_type'] == 4) and values['address_id'] == '':
+        if (values['type'] == 1 or values['type'] == 4) and values['address_id'] == '':
             raise ValueError(f"商品 {values['goods_name']} 为实物, 但收货地址不存在, 已自动跳过")
         return values
 
@@ -207,21 +223,57 @@ class GoodsInfo(BaseModel):
     """
     商品信息
     """
-    goods_id: Optional[str]
+
+    goods_id: str
     """商品id"""
-    goods_name: Optional[str]
+    goods_name: str
     """商品名称"""
-    goods_price: Optional[str]
-    """商品价格"""
-    goods_type: Optional[str]
+    type: int
     """商品类型"""
-    goods_biz: Optional[str]
-    """商品区服"""
-    goods_num: Optional[str]
-    """商品数量"""
-    goods_limit: Optional[str]
-    """商品限购"""
-    goods_rule: Optional[Dict[int, List]]
+    price: int
+    """商品价格"""
+    unlimit: bool
+    """商品兑换总数量是否无限制"""
+    total: int
+    """商品兑换总数量"""
+    account_cycle_type: Literal['forever', 'month']
+    """商品账户限购类型"""
+    account_cycle_limit: int
+    """商品账户限购数量"""
+    account_exchange_num: int
+    """商品账户已兑换数量"""
+    status: str
+    """商品状态"""
+    next_num: int
+    """商品下次兑换数量"""
+    next_time: int
+    """商品下次兑换时间"""
+    rules: Optional[List[Dict[str, Union[int, List[str]]]]]
     """商品兑换规则"""
-    goods_time: Optional[str]
-    """商品兑换时间"""
+    game_biz: Optional[str]
+    """商品区服"""
+    sale_start_time: Optional[int]
+    """商品销售开始时间"""
+
+    def rule_for_num(self, num: int) -> Optional[str]:
+        """
+        获取指定的兑换规则
+        """
+        if not self.rules:
+            return None
+        for rule in self.rules:
+            if num == rule['rule_id']:
+                return rule['values'][0]
+        return None
+
+    @property
+    def exchange_time(self) -> int:
+        """
+        获取商品下次兑换时间
+        """
+        if self.next_time == 0 or (self.next_time > get_time() and self.total > 0):
+            return -1
+        elif self.status == 'online':
+            return self.next_time
+        else:
+            return self.sale_start_time

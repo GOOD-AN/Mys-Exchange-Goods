@@ -8,7 +8,7 @@ import sys
 import time
 from getpass import getuser
 
-from myseg import async_input, check_update, info_menu, init_exchange, wait_tasks
+from myseg import async_input, check_update, info_menu, init_exchange, wait_tasks, user_dict
 from myseg import check_cookie, update_cookie
 from myseg import user_global_var as gl, logger
 
@@ -30,11 +30,11 @@ async def check_all_cookie():
     检查所有cookie是否有效
     """
     try:
-        if not gl.user_dict or not gl.init_config.getboolean('update_setting', 'check_account_enable'):
+        if not user_dict or not gl.init_config.getboolean('update_setting', 'check_account_enable'):
             return True
         logger.info("检查所有cookie是否有效...")
         expires_account = []
-        for account in gl.user_dict.values():
+        for account in user_dict.values():
             check_cookie_result = await check_cookie(account)
             if check_cookie_result == -1:
                 logger.info(f"账号: {account['mys_uid']} 检查失败")
@@ -46,7 +46,7 @@ async def check_all_cookie():
                 for account in expires_account:
                     update_result = await update_cookie(account)
                     if update_result:
-                        gl.user_dict[account.mys_uid].cookie = update_result
+                        user_dict[account.mys_uid].cookie = update_result
                     else:
                         logger.info(f"账号: {account.mys_uid} 更新cookie失败")
                 logger.info("自动更新cookie完成")
