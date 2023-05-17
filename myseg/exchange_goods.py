@@ -9,7 +9,7 @@ from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR, EVENT_JOB_EXEC
 from datetime import datetime
 
 from . import scheduler
-from .com_tool import async_input
+from .com_tool import async_input, get_exchange_data
 from .data_class import ExchangeInfo
 from .global_var import user_global_var as gl
 from .logging import logger, logger_file
@@ -122,12 +122,7 @@ async def init_task():
         exchange_file_path = gl.data_path / 'exchange_list.json'
         if not exchange_file_path.exists():
             return False
-        with open(exchange_file_path, "r", encoding="utf-8") as exchange_file:
-            try:
-                goods_data_dict = json.load(exchange_file)
-            except json.decoder.JSONDecodeError:
-                logger_file.exception("数据格式错误, 读取兑换任务失败")
-                return False
+        goods_data_dict = await get_exchange_data()
         exchange_data_list = []
         error_list = []
         print("将会删除所有无法兑换的商品")

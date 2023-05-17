@@ -1,13 +1,15 @@
 """
 米游社相关
 """
+import asyncio
+
 import httpx
 import random
 import re
 import string
 import sys
 import time
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Tuple
 
 from . import logger
 from .com_tool import md5_encode
@@ -80,6 +82,121 @@ async def get_old_ds(web: bool):
     r_param = ''.join(random.sample(string.ascii_lowercase + string.digits, 6))
     c_param = md5_encode(f'salt={old_salt}&t={t_param}&r={r_param}')
     return f"{t_param},{r_param},{c_param}"
+
+
+async def get_ticket_by_mobile(mobile: str, mobile_captcha: str) -> Union[bool, int, Tuple[Union[httpx.Cookies, str]]]:
+    """
+    获取ticket和mys_uid
+    """
+    try:
+        get_ticket_url = WEB_URL + "/Api/login_by_mobilecaptcha"
+        get_ticket_form_data_one = {
+            "mobile": mobile,
+            "mobile_captcha": mobile_captcha,
+            "source": "user.mihoyo.com"
+        }
+        async with httpx.AsyncClient() as client:
+            for _ in range(3):
+                get_ticket_req_one = await client.post(get_ticket_url, data=get_ticket_form_data_one)
+                if get_ticket_req_one.status_code != 200:
+                    logger.warning(f"请求出错, 错误代码为: {get_ticket_req_one.status_code}")
+                    await asyncio.sleep(random.random())
+                    continue
+                status_code = get_ticket_req_one.json()['data']['status']
+                if status_code == -201:
+                    logger.warning("验证码错误")
+                    return -201
+                else:
+                    break
+        get_ticket_cookie_one = get_ticket_req_one.cookies
+        if "login_ticket" not in get_ticket_cookie_one:
+            logger.warning("缺少'login_ticket'字段, 请重新获取")
+            return False
+        if "login_uid" not in get_ticket_cookie_one:
+            mys_uid = get_ticket_req_one.json()['data']['account_info']['account_id']
+        else:
+            mys_uid = get_ticket_cookie_one['login_uid']
+        if mys_uid is None:
+            logger.warning("缺少'uid'字段, 请重新获取")
+            return False
+        return get_ticket_cookie_one, mys_uid
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
+async def get_stoken_by_ticket(login_ticket: str, mys_uid: str) -> Union[bool, str]:
+    """
+    获取stoken
+    """
+    try:
+        get_stoken_url = MI_URL + "/auth/api/getMultiTokenByLoginTicket"
+        get_stoken_params = {
+            "login_ticket": login_ticket,
+            "token_types": 3,
+            "uid": mys_uid
+        }
+        async with httpx.AsyncClient() as client:
+            for _ in range(3):
+                get_stoken_req = await client.get(get_stoken_url, params=get_stoken_params)
+                if get_stoken_req.status_code != 200:
+                    logger.warning(f"请求出错, 错误代码为: {get_stoken_req.status_code}")
+                    await asyncio.sleep(random.random())
+                    continue
+                else:
+                    return get_stoken_req.json()["data"]["list"][0]["token"]
+            return False
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
+async def get_cookie_token_by_mobile(mobile: str, mobile_captcha: str) -> Union[bool, httpx.Cookies, int]:
+    """
+    获取cookie_token
+    """
+    try:
+        get_token_url = MI_URL + "/account/auth/api/webLoginByMobile"
+        get_token_form_data = {
+            "is_bh2": False,
+            "mobile": mobile,
+            "captcha": mobile_captcha,
+            "action_type": "login",
+            "token_type": 6
+        }
+        async with httpx.AsyncClient() as client:
+            for _ in range(3):
+                get_token_req = await client.post(get_token_url, json=get_token_form_data)
+                if get_token_req.status_code != 200:
+                    logger.warning(f"请求出错, 错误代码为: {get_token_req.status_code}")
+                    await asyncio.sleep(random.random())
+                    continue
+                status_code = get_token_req.json()['retcode']
+                if status_code == -201:
+                    logger.warning("验证码错误")
+                    return -201
+                else:
+                    break
+        get_token_cookie = get_token_req.cookies
+        if "cookie_token" not in get_token_cookie:
+            logger.warning("缺少'cookie_token'字段, 请重新获取")
+            return False
+        return get_token_cookie
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
 
 
 async def check_cookie(account: UserInfo) -> int:

@@ -157,6 +157,30 @@ async def save_user_file(save_data: UserInfo, log_info) -> Union[bool, UserInfo]
         return False
 
 
+async def get_exchange_data():
+    """
+    获取兑换数据
+    """
+    try:
+        exchange_file_path = gl.data_path / 'exchange_list.json'
+        exchange_data = {}
+        if exchange_file_path.exists():
+            with open(exchange_file_path, "r", encoding="utf-8") as exchange_file:
+                try:
+                    exchange_data = json.load(exchange_file)
+                except json.decoder.JSONDecodeError:
+                    exchange_data = {}
+                    logger.info("数据格式错误, 已清空数据")
+        return exchange_data
+    except KeyboardInterrupt:
+        logger.warning("用户强制退出")
+        input("按回车键继续")
+        sys.exit()
+    except Exception as err:
+        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
 async def save_exchange_file(save_data: Dict) -> bool:
     """
     保存兑换文件数据
