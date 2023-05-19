@@ -3,9 +3,9 @@
   <a href="https://github.com/GOOD-AN/Mys-Exchange-Goods/releases/latest" target="_blank">
     <img alt="最新发行版" src="https://img.shields.io/github/v/release/GOOD-AN/Mys-Exchange-Goods?logo=python&style=for-the-badge">
   </a>
-  <img alt="Python 版本要求" src="https://img.shields.io/badge/Python-3.7+-green.svg?longCache=true&style=for-the-badge">
+  <img alt="Python 版本要求 3.7+" src="https://img.shields.io/badge/Python-3.7+-green.svg?longCache=true&style=for-the-badge">
   <img alt="GitHub CodeQL 代码检查" src="https://img.shields.io/github/actions/workflow/status/GOOD-AN/Mys-Exchange-Goods/codeql.yml?logo=github&style=for-the-badge">
-  <img alt="开源协议" src="https://img.shields.io/badge/License-mit-blue.svg?longCache=true&style=for-the-badge">
+  <img alt="开源协议 MIT" src="https://img.shields.io/badge/License-mit-blue.svg?longCache=true&style=for-the-badge">
 </div>
 
 ## 🖨️ 相关文档

@@ -10,18 +10,20 @@ import time
 from apscheduler.events import EVENT_JOB_ADDED, EVENT_JOB_MODIFIED, EVENT_JOB_MISSED, EVENT_JOB_REMOVED
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Tuple
 
-from . import scheduler
-from .com_tool import async_input, save_user_file, save_exchange_file, get_exchange_data
-from .data_class import UserInfo, GoodsInfo
-from .exchange_goods import ExchangeGoods
-from .global_var import user_global_var as gl
-from .logging import logger, logger_file
-from .mi_tool import get_goods_list, get_goods_biz, get_address, get_channel_level, MYS_CHANNEL, GAME_NAME, \
+from myseg import scheduler
+from myseg.com_tool import save_user_file, save_exchange_file, get_exchange_data
+from myseg.data_class import UserInfo, GoodsInfo
+from myseg.exchange_goods import ExchangeGoods
+from myseg.global_var import user_global_var as gl
+from myseg.mi_tool import get_goods_list, get_goods_biz, get_address, get_channel_level, MYS_CHANNEL, GAME_NAME, \
     get_ticket_by_mobile, get_stoken_by_ticket, get_cookie_token_by_mobile
-from .mi_tool import update_cookie, get_goods_detail, get_game_roles, get_point
-from .user_data import user_dict
+from myseg.mi_tool import update_cookie, get_goods_detail, get_game_roles, get_point
+from myseg.tocli.cli_exchange import cli_show_result
+from myseg.tocli.cli_tool import async_input
+from myseg.user_data import user_dict
+from myseg.user_log import logger
 
 
 async def select_user(select_user_data: dict):
@@ -35,7 +37,6 @@ async def select_user(select_user_data: dict):
             print(f"1. {mys_id}")
         if len(select_user_data) == 1:
             print("仅有一个用户")
-            logger_file.info(f"仅有一个用户{select_user_data_key[0]}")
             return select_user_data[select_user_data_key[0]]
         select_user_id = 0
         while True:
@@ -223,7 +224,7 @@ class SelectGoods(BaseModel):
                     for task_key, task_value in goods_select_dict.items():
                         task_value.update({'cookie': self.account.cookie, 'task_id': task_key})
                         wait_task = ExchangeGoods.parse_obj(task_value)
-                        scheduler.add_job(id=task_key, trigger='date', func=wait_task.run_task,
+                        scheduler.add_job(id=task_key, trigger='date', func=cli_show_result, args=(wait_task,),
                                           next_run_time=datetime.fromtimestamp(wait_task.exchange_time))
                     await async_input("添加兑换任务成功, 按回车键继续")
                     return True
@@ -273,7 +274,8 @@ class SelectGoods(BaseModel):
                 if not goods_list_data:
                     await async_input("获取商品列表失败或当前没有可兑换商品, 请稍后重试(回车以返回)")
                     continue
-                for index, goods_data in enumerate(goods_list_data, start=1):
+                goods_num = 1
+                for goods_data in goods_list_data:
                     # unlimit 为 False 表示兑换总数量有限制
                     # next_num 表示下次兑换总数量
                     # total 表示当前可兑换总数量
@@ -282,10 +284,10 @@ class SelectGoods(BaseModel):
                         continue
                     goods_data = await get_goods_detail(goods_data.goods_id)
                     if not goods_data:
-                        print(f"获取商品详情失败, 商品序号: {index}, 商品名称: {goods_data.goods_name}")
+                        print(f"获取商品详情失败, 商品序号: {str(goods_num)}, 商品名称: {goods_data.goods_name}")
                         continue
                     print("-" * 25)
-                    print(f"商品序号: {index}")
+                    print(f"商品序号: {str(goods_num)}")
                     print(f"商品名称: {goods_data.goods_name}")
                     print(f"商品价格: {goods_data.price} 米游币")
                     if goods_data.total == 0 and goods_data.next_num == 0:
@@ -304,6 +306,7 @@ class SelectGoods(BaseModel):
                     else:
                         print(f"本月限购: {goods_data.account_cycle_limit} 个")
                     self.select_goods_list.append(goods_data)
+                    goods_num += 1
                 if not self.select_goods_list:
                     await async_input("没有可兑换的商品(回车以返回)")
                 if self.account:
@@ -312,6 +315,8 @@ class SelectGoods(BaseModel):
                         self.select_goods_list.clear()
                         continue
                     await self.select_goods()
+                else:
+                    await async_input("如需选择兑换商品, 请先登录账户(回车以返回)")
         except KeyboardInterrupt:
             logger.warning("用户强制退出")
             input("按回车键继续")
@@ -405,7 +410,7 @@ class SelectGoods(BaseModel):
             return False
 
 
-async def get_cookie():
+async def get_cookie() -> Union[bool, Tuple[str, str]]:
     """
     https://user.mihoyo.com/#/login/captcha
     获取app端cookie
@@ -421,9 +426,13 @@ async def get_cookie():
             print("已将地址复制到剪贴板, 若无法粘贴请手动复制")
         except Exception:
             print("无法复制地址到剪贴板, 请手动复制")
-        mobile = await async_input("请输入手机号: ")
+        mobile = await async_input("请输入手机号(输入0退出): ")
+        if mobile == '0':
+            return False
         while True:
-            mobile_captcha = await async_input("请输入验证码: ")
+            mobile_captcha = await async_input("请输入验证码(输入0退出): ")
+            if mobile_captcha == '0':
+                return False
             get_cookie_ticket_data = await get_ticket_by_mobile(mobile, mobile_captcha)
             if not get_cookie_ticket_data:
                 return False
@@ -445,7 +454,9 @@ async def get_cookie():
         except Exception:
             print("无法复制地址到剪贴板, 请手动复制")
         while True:
-            mobile_captcha = await async_input("请输入第二次验证码: ")
+            mobile_captcha = await async_input("请输入第二次验证码(输入0退出): ")
+            if mobile_captcha == '0':
+                return False
             user_cookie_two = await get_cookie_token_by_mobile(mobile, mobile_captcha)
             if not user_cookie_two:
                 return False
@@ -474,7 +485,11 @@ async def get_user_info() -> Union[bool, UserInfo]:
     获取用户信息
     """
     try:
-        user_cookie, mys_uid = await get_cookie()
+        user_cookie_data = await get_cookie()
+        if not user_cookie_data:
+            return False
+        user_cookie = user_cookie_data[0]
+        mys_uid = user_cookie_data[1]
         new_user = UserInfo.parse_obj({'mys_uid': mys_uid, 'cookie': user_cookie})
         print("等待获取其他信息")
         new_user = await get_channel_level(new_user)
@@ -539,11 +554,15 @@ async def info_menu():
 0. 返回主菜单""")
             select_function = await async_input("请输入选择功能的序号: ")
             os.system(gl.clear_type)
+            if select_function.isdigit() and 3 <= int(select_function) <= 8 and not account:
+                print("请先选择账户或获取账户后, 再进行此操作")
+                await async_input("按回车键继续")
+                continue
             if select_function == "1":
                 new_account = await get_user_info()
                 if new_account:
                     account = new_account
-                    user_dict[account.mys_uid] = account
+                    user_dict.update({account.mys_uid: account})
                     logger.info(f"获取账户信息成功, 已切换用户为{account.mys_uid}")
                 else:
                     logger.info("获取账户信息失败")
@@ -558,17 +577,33 @@ async def info_menu():
                 else:
                     logger.info("未获取到米游币数量")
             elif select_function == "5":
-                account = (lambda x, y: x if x else y)(
-                    await save_user_file(await update_cookie(account), "Cookie"), account)
+                update_data = await save_user_file(await update_cookie(account), "Cookie")
+                if update_data:
+                    account = update_data
+                    print("更新Cookie成功")
+                else:
+                    print("更新Cookie失败")
             elif select_function == "6":
-                account = (lambda x, y: x if x else y)(
-                    await save_user_file(await get_game_roles(account), "游戏账号"), account)
+                update_data = await save_user_file(await get_game_roles(account), "游戏账号")
+                if update_data:
+                    account = update_data
+                    print("更新游戏账号信息成功")
+                else:
+                    print("更新游戏账号信息失败")
             elif select_function == "7":
-                account = (lambda x, y: x if x else y)(
-                    await save_user_file(await get_address(account), "收货地址"), account)
+                update_data = await save_user_file(await get_address(account), "收货地址")
+                if update_data:
+                    account = update_data
+                    print("更新收货地址信息成功")
+                else:
+                    print("更新收货地址信息失败")
             elif select_function == "8":
-                account = (lambda x, y: x if x else y)(
-                    await save_user_file(await get_channel_level(account), "频道等级"), account)
+                update_data = await save_user_file(await get_channel_level(account), "频道等级")
+                if update_data:
+                    account = update_data
+                    print("更新频道等级信息成功")
+                else:
+                    print("更新频道等级信息失败")
             elif select_function == "9":
                 if user_dict:
                     account = await select_user(user_dict)

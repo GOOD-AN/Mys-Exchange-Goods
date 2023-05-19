@@ -6,10 +6,10 @@ import re
 import time
 from ntplib import NTPClient
 from pydantic import BaseModel, validator, root_validator
-from typing import List, Dict, Optional, Literal, Union
+from typing import List, Dict, Optional, Union
 
 from .global_var import user_global_var as gl
-from .logging import logger_file
+from .user_log import logger_file
 
 
 def get_time() -> float:
@@ -201,7 +201,7 @@ class ExchangeInfo(BaseModel):
         检查兑换时间是否已过
         """
         if v == -1:
-            return get_time() + 300
+            return get_time() + 60
         elif v < get_time():
             raise ValueError(f"商品 {values['goods_name']} 兑换时间已过, 已自动跳过")
         return v
@@ -236,7 +236,7 @@ class GoodsInfo(BaseModel):
     """商品兑换总数量是否无限制"""
     total: int
     """商品兑换总数量"""
-    account_cycle_type: Literal['forever', 'month']
+    account_cycle_type: str
     """商品账户限购类型"""
     account_cycle_limit: int
     """商品账户限购数量"""

@@ -1,7 +1,6 @@
 """
 全局变量
 """
-
 import platform
 import sys
 from configparser import ConfigParser
@@ -16,7 +15,7 @@ class GlobalVar(BaseModel):
     全局变量
     """
 
-    basic_path = Path(sys.argv[0]).cwd()
+    basic_path = Path(__file__).resolve().parent.parent
     config_path = basic_path / 'config'
     data_path = basic_path / 'data'
     user_data_path = data_path / 'user_info'

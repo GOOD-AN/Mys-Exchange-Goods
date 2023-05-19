@@ -1,17 +1,16 @@
 """
 通用函数
 """
-import asyncio
 import httpx
 import json
 import sys
-import time
 from hashlib import md5
-from typing import Union, Dict
+from typing import Union, Dict, Tuple, List
 
+from .__version__ import __version__
 from .data_class import ClassEncoder, UserInfo
 from .global_var import user_global_var as gl
-from .logging import logger
+from .user_log import logger_file
 
 CHECK_UPDATE_URL_LIST = [
     'https://cdn.jsdelivr.net/gh/GOOD-AN/mys_exch_goods@latest/',
@@ -20,9 +19,12 @@ CHECK_UPDATE_URL_LIST = [
 ]
 
 
-async def compare_version(old_version, new_version):
+async def compare_version(old_version, new_version) -> Union[int, bool]:
     """
     版本号比较
+    1: 旧版本大于新版本
+    0: 旧版本等于新版本
+    -1: 旧版本小于新版本
     """
     try:
         for o_v, n_v in zip(old_version, new_version):
@@ -32,26 +34,27 @@ async def compare_version(old_version, new_version):
                 return -1
         return 0
     except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
+        logger_file.warning("用户强制退出")
         sys.exit()
     except Exception as err:
-        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        await async_input("按回车键继续")
+        logger_file.exception(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
-async def check_update(main_version):
+async def check_update() -> Tuple[int, Union[str, List[Union[List[Dict], str]]]]:
     """
     检查更新
+    101: 检查更新失败
+    102: 版本不匹配
+    103: 当前版本为最新版本
+    104: 当前版本低于最新版本但高于最低版本
+    105: 当前版本低于最低版本
     """
     try:
         config_version = gl.init_config.get('app', 'version')
-        if main_version == config_version:
-            logger.info(f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}")
-            # 远程检查更新
+        if __version__ == config_version:
+            logger_file.info(f"当前程序版本为v{__version__}, 配置文件版本为v{config_version}")
             check_info = {}
-            logger.info("正在联网检查更新...")
             for check_update_url in CHECK_UPDATE_URL_LIST:
                 check_url = check_update_url + "update_log.json"
                 try:
@@ -59,49 +62,37 @@ async def check_update(main_version):
                         check_info = await client.get(check_url, timeout=5)
                         check_info = check_info.json()
                     break
-                except (httpx.HTTPError, json.JSONDecodeError):
+                except (httpx.HTTPError, json.JSONDecodeError) as err:
+                    logger_file.warning(f"检查更新失败, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}, "
+                                        f"检查更新地址为: {check_url}")
                     continue
             if not check_info:
-                logger.warning("检查更新失败")
-                return False
+                logger_file.warning("检查更新失败")
+                return 101, "检查更新失败"
+            local_version = __version__.split('.')
             remote_least_version = check_info['least_version'].split('.')
-            local_version = main_version.split('.')
             remote_last_version = check_info['last_version'].split('.')
+            logger_file.info(f"远端最低版本为v{check_info['least_version']}, "
+                             f"远端最新版本为v{check_info['last_version']}")
             if await compare_version(local_version, remote_last_version) == -1:
-                remote_update_log_list = check_info['update_log']
-                print(f"当前程序版本为v{main_version}, 最新程序版本为v{check_info['last_version']}")
-                print("当前非最新版本，建议更新\n")
-                print("更新概览: ")
-                print("=" * 50)
-                for update_log in remote_update_log_list:
+                remote_update_log_list = []
+                for index, update_log in enumerate(check_info['update_log']):
                     if await compare_version(update_log['version'].split('.'), local_version) == 1:
-                        print("版本: ", f"{update_log['version']}".center(12))
-                        print(f"更新时间: {update_log['update_time']}")
-                        print(f"更新说明: {update_log['update_content'][0]}")
-                        for content in update_log['update_content'][1:]:
-                            print(content.rjust(20))
-                        print("=" * 50)
+                        remote_update_log_list = check_info['update_log'][index:]
+                        break
                 if await compare_version(remote_least_version, local_version) == 1:
-                    logger.warning("版本过低, 程序将停止运行")
-                    print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
-                    time.sleep(3)
-                    sys.exit()
-                print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
-                return True
+                    return 105, [remote_update_log_list, check_info['last_version']]
+                else:
+                    return 104, [remote_update_log_list, check_info['last_version']]
         else:
-            logger.warning(
-                f"当前程序版本为v{main_version}, 配置文件版本为v{config_version}, 版本不匹配可能带来运行问题, 建议更新")
-            print("项目地址: https://github.com/GOOD-AN/Mys-Exchange-Goods")
-            return True
-        logger.info("当前已是最新版本")
-        return True
+            return 102, "版本不匹配"
+        return 103, "当前为最新版本"
     except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
+        logger_file.warning("用户强制退出")
         sys.exit()
     except Exception as err:
-        logger.error(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        return None
+        logger_file.error(f"检查更新失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return 101, "检查更新失败"
 
 
 async def md5_encode(text):
@@ -113,24 +104,11 @@ async def md5_encode(text):
         md5_str.update(text.encode('utf-8'))
         return md5_str.hexdigest()
     except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
+        logger_file.warning("用户强制退出")
         sys.exit()
     except Exception as err:
-        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
-        await async_input("按回车键继续")
+        logger_file.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         sys.exit()
-
-
-async def async_input(prompt=''):
-    """
-    异步输入
-    """
-    try:
-        return await asyncio.to_thread(input, prompt)
-    except AttributeError:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, input, prompt)
 
 
 async def save_user_file(save_data: UserInfo, log_info) -> Union[bool, UserInfo]:
@@ -143,21 +121,20 @@ async def save_user_file(save_data: UserInfo, log_info) -> Union[bool, UserInfo]
                 gl.user_data_path.mkdir(parents=True, exist_ok=True)
             with open(gl.user_data_path / f"{save_data.mys_uid}.json", 'w', encoding='utf-8') as f:
                 json.dump(save_data, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
-            logger.info(f"更新{log_info}信息成功")
+            logger_file.info(f"更新{log_info}信息成功")
             return save_data
         else:
-            logger.info(f"获取到{log_info}信息失败")
+            logger_file.info(f"获取到{log_info}信息失败")
             return False
     except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
+        logger_file.warning("用户强制退出")
         sys.exit()
     except Exception as err:
-        logger.error(f"保存文件失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger_file.error(f"保存文件失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
-async def get_exchange_data():
+async def get_exchange_data() -> Union[bool, Dict]:
     """
     获取兑换数据
     """
@@ -170,14 +147,13 @@ async def get_exchange_data():
                     exchange_data = json.load(exchange_file)
                 except json.decoder.JSONDecodeError:
                     exchange_data = {}
-                    logger.info("数据格式错误, 已清空数据")
+                    logger_file.info("兑换文件数据格式错误, 已清空数据")
         return exchange_data
     except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
+        logger_file.warning("用户强制退出")
         sys.exit()
     except Exception as err:
-        logger.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger_file.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
 
 
@@ -192,15 +168,14 @@ async def save_exchange_file(save_data: Dict) -> bool:
                 exchange_file_path.mkdir(parents=True, exist_ok=True)
             with open(exchange_file_path, 'w', encoding='utf-8') as f:
                 json.dump(save_data, f, ensure_ascii=False, indent=4)
-            logger.info(f"更新兑换信息成功")
+            logger_file.info(f"更新兑换信息成功")
             return True
         else:
-            logger.info(f"不存在兑换信息")
+            logger_file.info(f"不存在兑换信息")
             return False
     except KeyboardInterrupt:
-        logger.warning("用户强制退出")
-        input("按回车键继续")
+        logger_file.warning("用户强制退出")
         sys.exit()
     except Exception as err:
-        logger.error(f"保存文件失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        logger_file.error(f"保存文件失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False
