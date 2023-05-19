@@ -4,6 +4,8 @@
 import httpx
 import json
 import sys
+from apscheduler.events import EVENT_JOB_ADDED, EVENT_JOB_REMOVED, EVENT_JOB_MODIFIED, EVENT_JOB_MISSED, \
+    EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
 from hashlib import md5
 from typing import Union, Dict, Tuple, List
 
@@ -121,7 +123,7 @@ async def save_user_file(save_data: UserInfo, log_info) -> Union[bool, UserInfo]
                 gl.user_data_path.mkdir(parents=True, exist_ok=True)
             with open(gl.user_data_path / f"{save_data.mys_uid}.json", 'w', encoding='utf-8') as f:
                 json.dump(save_data, f, ensure_ascii=False, indent=4, cls=ClassEncoder)
-            logger_file.info(f"更新{log_info}信息成功")
+            logger_file.info(f"保存{log_info}信息成功")
             return save_data
         else:
             logger_file.info(f"获取到{log_info}信息失败")
@@ -164,8 +166,8 @@ async def save_exchange_file(save_data: Dict) -> bool:
     try:
         if save_data:
             exchange_file_path = gl.data_path / 'exchange_list.json'
-            if not exchange_file_path.exists():
-                exchange_file_path.mkdir(parents=True, exist_ok=True)
+            if not gl.data_path.exists():
+                gl.data_path.mkdir(parents=True, exist_ok=True)
             with open(exchange_file_path, 'w', encoding='utf-8') as f:
                 json.dump(save_data, f, ensure_ascii=False, indent=4)
             logger_file.info(f"更新兑换信息成功")
@@ -178,4 +180,26 @@ async def save_exchange_file(save_data: Dict) -> bool:
         sys.exit()
     except Exception as err:
         logger_file.error(f"保存文件失败, 原因为{err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        return False
+
+
+def scheduler_log_listener(event):
+    """
+    监听基础定时任务事件(此处事件只会输出到日志)
+    """
+    try:
+        if event.code == EVENT_JOB_ADDED:
+            logger_file.info(f"任务 {event.job_id} 已添加")
+        elif event.code == EVENT_JOB_REMOVED:
+            logger_file.info(f"任务 {event.job_id} 已删除")
+        elif event.code == EVENT_JOB_MODIFIED:
+            logger_file.info(f"任务 {event.job_id} 已修改")
+        elif event.code == EVENT_JOB_MISSED:
+            logger_file.warning(f"任务 {event.job_id} 已错过")
+        elif event.code == EVENT_JOB_ERROR:
+            logger_file.error(f"任务 {event.job_id} 运行出错, 错误为: {event.exception}")
+        elif event.code == EVENT_JOB_EXECUTED:
+            logger_file.info(f"任务 {event.job_id} 已执行")
+    except Exception as err:
+        logger_file.error(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
         return False

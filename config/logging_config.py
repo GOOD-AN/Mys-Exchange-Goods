@@ -60,6 +60,11 @@ log_config = {
             "handlers": ["standard_file"],
             "level": "INFO",
             "propagate": False
+        },
+        "only_debug_file_logger": {
+            "handlers": ["standard_file"],
+            "level": "DEBUG",
+            "propagate": False
         }
     },
     "root": {},

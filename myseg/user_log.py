@@ -1,10 +1,13 @@
 """
 日志
 """
+import sys
+
 import logging.config
+from typing import Tuple
 
 from config import logging_config
-from myseg.global_var import user_global_var as gl
+from .global_var import user_global_var as gl
 
 
 class Logger:
@@ -24,17 +27,32 @@ class Logger:
         self.logger = logging.getLogger(log_control)
 
 
-user_log_control = 'info_all_logger'
-logger_file = Logger('only_file_logger').logger
-if not gl.init_config.getboolean('log_setting', 'out_file'):
-    if gl.init_config.getboolean('log_setting', 'debug'):
-        user_log_control = 'debug_console_logger'
-    else:
-        user_log_control = 'info_console_logger'
-    logger_file.disabled = True
-else:
-    if gl.init_config.getboolean('log_setting', 'debug'):
-        user_log_control = 'debug_all_logger'
-    else:
-        user_log_control = 'info_all_logger'
-logger = Logger(user_log_control).logger
+def get_logger() -> Tuple[Logger, Logger]:
+    """
+    获取日志
+    """
+    try:
+        logger_main = Logger('only_file_logger').logger
+        if not gl.init_config.getboolean('log_setting', 'out_file'):
+            if gl.init_config.getboolean('log_setting', 'debug'):
+                user_log_control = 'debug_console_logger'
+            else:
+                user_log_control = 'info_console_logger'
+            logger_main = Logger(user_log_control).logger
+        else:
+            if gl.init_config.getboolean('log_setting', 'debug'):
+                user_log_control = 'debug_all_logger'
+                logger_main = Logger("only_debug_file_logger").logger
+            else:
+                user_log_control = 'info_all_logger'
+        logger_one = Logger(user_log_control).logger
+        return logger_one, logger_main
+    except KeyboardInterrupt:
+        print("用户强制退出")
+        sys.exit()
+    except Exception as err:
+        print(f"运行出错, 错误为: {err}, 错误行数为: {err.__traceback__.tb_lineno}")
+        sys.exit()
+
+
+logger, logger_file = get_logger()

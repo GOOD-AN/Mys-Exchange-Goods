@@ -12,18 +12,17 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, Union, List, Tuple
 
-from myseg import scheduler
-from myseg.com_tool import save_user_file, save_exchange_file, get_exchange_data
-from myseg.data_class import UserInfo, GoodsInfo
-from myseg.exchange_goods import ExchangeGoods
-from myseg.global_var import user_global_var as gl
-from myseg.mi_tool import get_goods_list, get_goods_biz, get_address, get_channel_level, MYS_CHANNEL, GAME_NAME, \
+from .cli_exchange import cli_show_result
+from .cli_tool import async_input, scheduler
+from ..com_tool import save_user_file, save_exchange_file, get_exchange_data
+from ..data_class import UserInfo, GoodsInfo
+from ..exchange_goods import ExchangeGoods
+from ..global_var import user_global_var as gl
+from ..mi_tool import get_goods_list, get_goods_biz, get_address, get_channel_level, MYS_CHANNEL, GAME_NAME, \
     get_ticket_by_mobile, get_stoken_by_ticket, get_cookie_token_by_mobile
-from myseg.mi_tool import update_cookie, get_goods_detail, get_game_roles, get_point
-from myseg.tocli.cli_exchange import cli_show_result
-from myseg.tocli.cli_tool import async_input
-from myseg.user_data import user_dict
-from myseg.user_log import logger
+from ..mi_tool import update_cookie, get_goods_detail, get_game_roles, get_point
+from ..user_data import user_dict
+from ..user_log import logger
 
 
 async def select_user(select_user_data: dict):

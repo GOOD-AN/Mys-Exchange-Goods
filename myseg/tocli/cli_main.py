@@ -6,14 +6,15 @@ import sys
 import time
 from getpass import getuser
 
-from myseg import logger, __version__, __project_url__
-from myseg.com_tool import check_update
-from myseg.global_var import user_global_var as gl
-from myseg.mi_tool import check_cookie, update_cookie
-from myseg.user_data import user_dict
-from .cli_exchange import cli_wait_tasks
+from .cli_exchange import cli_wait_tasks, cli_init_task
 from .cli_get_info import info_menu
-from .cli_tool import async_input
+from .cli_tool import async_input, scheduler
+from .. import __version__, __project_url__
+from ..com_tool import check_update
+from ..global_var import user_global_var as gl
+from ..mi_tool import check_cookie, update_cookie
+from ..user_data import user_dict
+from ..user_log import logger
 
 MESSAGE = f"""\
 ===========================================
@@ -125,6 +126,8 @@ async def main_menu():
     """
     try:
         await check_all_cookie()
+        scheduler.start()
+        await cli_init_task()
         while True:
             os.system(gl.clear_type)
             print("""主菜单

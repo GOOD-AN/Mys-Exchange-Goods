@@ -7,12 +7,12 @@ import json
 import sys
 from typing import Union, Optional, List
 
-from myseg import logger_file
-from myseg.com_tool import get_exchange_data
-from myseg.data_class import ExchangeInfo
-from myseg.global_var import user_global_var as gl
-from myseg.mi_tool import MI_URL, get_goods_detail
-from myseg.user_data import user_dict
+from .user_log import logger_file
+from .com_tool import get_exchange_data
+from .data_class import ExchangeInfo
+from .global_var import user_global_var as gl
+from .mi_tool import MI_URL, get_goods_detail
+from .user_data import user_dict
 
 
 class ExchangeGoods(ExchangeInfo):

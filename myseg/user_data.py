@@ -4,7 +4,7 @@
 import json
 import sys
 
-from . import logger_file
+from .user_log import logger_file
 from .data_class import AddressInfo, GameInfo, UserInfo
 from .global_var import user_global_var as gl
 

@@ -11,7 +11,7 @@ import sys
 import time
 from typing import Union, List, Optional, Tuple
 
-from . import logger_file
+from .user_log import logger_file
 from .com_tool import md5_encode
 from .data_class import UserInfo, GameInfo, GoodsInfo, AddressInfo
 

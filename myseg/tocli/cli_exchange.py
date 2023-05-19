@@ -5,10 +5,9 @@ import sys
 from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
 from datetime import datetime
 
-from myseg import scheduler
-from myseg.exchange_goods import init_exchange, ExchangeGoods
-from myseg.tocli.cli_tool import async_input
-from myseg.user_log import logger
+from .cli_tool import async_input, scheduler
+from ..exchange_goods import init_exchange, ExchangeGoods
+from ..user_log import logger
 
 
 def cli_scheduler_wait_listener(event):
