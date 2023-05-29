@@ -1,6 +1,6 @@
 {
-    "least_version": "3.0.0",
-    "last_version": "3.0.2",
+    "least_version": "3.0.3",
+    "last_version": "3.0.3",
     "update_log":[
         {
             "version": "1.0.0",
@@ -66,6 +66,11 @@
             "version": "3.0.2",
             "update_time": "2023-05-05",
             "update_content": ["1.添加星铁兑换项目", "2.修复部分错误"]
+        },
+        {
+            "version": "3.0.3",
+            "update_time": "2023-05-25",
+            "update_content": ["1.整合接口", "2.修复部分错误"]
         }
     ]
 }
