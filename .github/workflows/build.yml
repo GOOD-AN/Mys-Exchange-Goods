@@ -17,6 +17,7 @@ jobs:
       - name: Check-out repository
         uses: actions/checkout@v3
 
+      # Prepared environment
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
@@ -40,6 +41,7 @@ jobs:
         with:
           install-only: true
 
+      # Compilation
       - name: Build (Windows)
         if: ${{ runner.os == 'Windows' }}
         uses: Nuitka/Nuitka-Action@main
@@ -81,9 +83,29 @@ jobs:
           include-data-dir: config=config
           macos-app-icon: data/images/logo_small.ico
 
-      - name: Compressed Files
+      # Compressed Files
+      - name: Install 7zip (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          brew update
+          brew install sevenzip
+
+      - name: Install 7zip (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          wget https://www.7-zip.org/a/7z2201-linux-x64.tar.xz
+          tar -xf 7z2201-linux-x64.tar.xz
+          sudo cp 7zz /usr/bin/7zz
+
+      - name: Compressed Files (Windows)
+        if: ${{ runner.os == 'Windows' }}
         run: |
           7z a -tzip -mx=9 -mm=LZMA -mfb=258 -mmt=on ./build/meg-${{ runner.os }}-x86_64.zip ./build/main.dist/*
+
+      - name: Compressed Files (Linux & macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          7zz a -tzip -mx=9 -mm=LZMA -mfb=258 -mmt=on ./build/meg-${{ runner.os }}-x86_64.zip ./build/main.dist/*
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
