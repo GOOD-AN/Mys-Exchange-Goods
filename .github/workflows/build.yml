@@ -81,12 +81,17 @@ jobs:
           include-data-dir: config=config
           macos-app-icon: data/images/logo_small.ico
 
+      - name: Compressed Files
+        if: ${{ runner.os == 'Windows' || runner.os == 'macOS' }}
+        run: |
+          7z a -tzip -mx=9 -mm=LZMA -mfb=258 -mmt=on ./build/meg-${{ runner.os }}-x86_64.zip ./build/main.dist/*
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: meg-${{ runner.os }}-x86_64
           path: |
-            build/main.dist/*
+            build/*.zip
 
   upload-release:
     needs: build
