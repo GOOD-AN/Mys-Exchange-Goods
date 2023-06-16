@@ -314,6 +314,7 @@ class SelectGoods(BaseModel):
                         self.select_goods_list.clear()
                         continue
                     await self.select_goods()
+                    self.select_goods_list.clear()
                 else:
                     await async_input("如需选择兑换商品, 请先登录账户(回车以返回)")
         except KeyboardInterrupt:

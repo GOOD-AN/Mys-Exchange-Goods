@@ -38,13 +38,13 @@ class ExchangeGoods(ExchangeInfo):
                 "uid": self.mys_uid,
                 "game_biz": self.game_biz
             }
-            exchange_goods_headers = {
-                "Cookie": self.cookie
-            }
+            exchange_goods_headers = {"Cookie": self.cookie}
             if self.region:
                 exchange_goods_json['region'] = self.region
             if self.address_id:
                 exchange_goods_json['address_id'] = self.address_id
+            if self.game_uid != self.mys_uid:
+                exchange_goods_json['uid'] = self.game_uid
             exchange_goods_req = ''
             async with httpx.AsyncClient() as client:
                 for _ in range(gl.init_config.getint('exchange_setting', 'retry')):
@@ -130,7 +130,10 @@ async def init_exchange() -> Union[bool, List[ExchangeGoods]]:
                 error_list.append(goods_key)
                 continue
             try:
-                goods_data.update({"task_id": goods_key, "cookie": user_dict[goods_data['mys_uid']].cookie})
+                goods_data.update({
+                    "task_id": goods_key,
+                    "cookie": user_dict[goods_data['mys_uid']].cookie
+                })
                 exchange_data_list.append(ExchangeGoods.parse_obj(goods_data))
             except (KeyError, ValueError) as err:
                 logger_file.error(f"商品 {goods_key} -{goods_data['goods_name']} 添加失败, 错误信息为{err}")
