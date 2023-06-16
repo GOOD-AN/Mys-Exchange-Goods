@@ -71,6 +71,11 @@
             "version": "3.0.3",
             "update_time": "2023-05-25",
             "update_content": ["1.整合接口", "2.修复部分错误"]
+        },
+        {
+            "version": "3.0.4",
+            "update_time": "2023-06-16",
+            "update_content": ["1.修复兑换错误"]
         }
     ]
 }
