@@ -37,7 +37,7 @@ jobs:
 
       - name: Install UPX (Windows)
         if: ${{ runner.os == 'Windows' }}
-        uses: crazy-max/ghaction-upx@v2
+        uses: crazy-max/ghaction-upx@v3
         with:
           install-only: true
 
