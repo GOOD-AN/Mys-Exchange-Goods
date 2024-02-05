@@ -2,4 +2,4 @@ httpx==0.26.0
 ntplib==0.4.0
 pyperclip==1.8.2
 APScheduler==3.10.4
-pydantic==1.10.9
+pydantic==2.6.1
